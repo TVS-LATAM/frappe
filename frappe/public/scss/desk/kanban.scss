@@ -27,10 +27,11 @@
 	.kanban-column {
 		@include transition();
 
-		flex: 0 0 260px;
-		max-width: 260px;
+		flex: 0 0 200px;
+		max-width: 200px;
 		border-radius: var(--border-radius);
-		padding: var(--padding-md);
+		padding-top: 0px;
+		padding: var(--padding-sm);
 		min-height: calc(100vh - 150px);
 		max-height: calc(100vh - var(--navbar-height) - var(--page-bottom-margin) - 80px);
 
@@ -72,7 +73,6 @@
 		.kanban-column-header {
 			@include flex(flex, space-between, null, null);
 			margin-top: 0;
-			margin-bottom: 15px;
 			position: relative;
 			font-weight: 500;
 			font-size: 12px;
@@ -158,7 +158,7 @@
 				}
 				.kanban-card {
 					@include flex(flex, space-between, null, column);
-					margin-top: var(--margin-sm);
+					margin-top: var(--margin-xs);
 					min-height: 100px;
 					@include card(
 						$padding: 0,
@@ -192,6 +192,16 @@
 							font-weight: 500;
 							background: whitesmoke;
 							padding: .2em .5em;
+
+							.kanban-card-title {
+								-webkit-box-orient: vertical;
+								display: block;
+								display: -webkit-box;
+								-webkit-line-clamp: 2;
+								line-clamp: 2;
+								overflow: hidden;
+								text-overflow: ellipsis;
+							}
 
 							.kanban-card-doc {
 								.text-muted div {
