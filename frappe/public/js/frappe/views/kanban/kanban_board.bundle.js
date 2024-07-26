@@ -27,7 +27,7 @@ const ProjectStatusOptions = {
 };
 
 (function () {
-	let same_status_2days = "At least 2 days the jobcard is in the same status."
+	let same_status_2days = "2 days in the same status."
 	let quotations_draft = 0
 	let unread_conversations = []
 	getDraftQuotations()
@@ -837,7 +837,7 @@ const ProjectStatusOptions = {
 
 			self.$card = $(frappe.render_template("kanban_card", opts)).appendTo(wrapper);
 			if (card.border.message === same_status_2days) {
-				self.$card.find(".kanban-card.content").css("border", "1px solid orange");
+				self.$card.find(".kanban-card.content").css("border", "1px solid pink");
 			} else if (card.border.message) {
 				self.$card.find(".kanban-card.content").css("border", "1px solid red");
 			} else if (card.conversation) {
@@ -1086,7 +1086,7 @@ const ProjectStatusOptions = {
 			hass_passed_one_day_quotation = has_passed_one_day(quotation.modified)
 		}
 		if (in_parking) {
-			message = "At least 2 days since moved to parking."
+			message = "2 days since moved to parking."
 		}
 		if (hass_passed_one_day_quotation) {
 			message = "The quote was sent over a day ago."
