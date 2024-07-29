@@ -833,8 +833,12 @@ const ProjectStatusOptions = {
 				client_description: frappe.utils.html2text(card.doc.client_description),
 				image_url: cur_list.get_image_url(card),
 				form_link: frappe.utils.get_form_link(card.doctype, card.name),
-				queue_position: card.doc.queue_position
+				queue_position: 0
 			};
+
+			if ([ProjectStatusOptions.InQueue, ProjectStatusOptions.InParking].includes(card.column)) {
+				opts.queue_position = card.doc.queue_position || "";
+			}
 			self.$card = $(frappe.render_template("kanban_card", opts)).appendTo(wrapper);
 			if (card.border.message === same_status_2days) {
 				self.$card.find(".kanban-card.content").css("border", "1px solid pink");
