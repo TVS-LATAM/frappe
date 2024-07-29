@@ -833,8 +833,8 @@ const ProjectStatusOptions = {
 				client_description: frappe.utils.html2text(card.doc.client_description),
 				image_url: cur_list.get_image_url(card),
 				form_link: frappe.utils.get_form_link(card.doctype, card.name),
+				queue_position: card.doc.queue_position
 			};
-
 			self.$card = $(frappe.render_template("kanban_card", opts)).appendTo(wrapper);
 			if (card.border.message === same_status_2days) {
 				self.$card.find(".kanban-card.content").css("border", "1px solid pink");
@@ -851,8 +851,9 @@ const ProjectStatusOptions = {
 
 		function get_doc_content(card) {
 			let fields = [];
-			const render_fields = [...cur_list.board.fields];
+			let render_fields = [...cur_list.board.fields];
 			const icon_map = {
+				'Project': '<i class="fa-light fa-rectangle-history-circle-user" style="color: black;"></i>',
 				'ID': '<i class="fa-light fa-rectangle-history-circle-user" style="color: black;"></i>',
 				'Queue position': '<i class="fa-light fa-map-pin" style="color: black;"></i>',
 				'Customer': '<i class="fa-regular fa-user" style="color: black;"></i>',
@@ -864,16 +865,19 @@ const ProjectStatusOptions = {
 				'Licence plate': '<i class="fa-regular fa-address-card" style="color: black;"></i>',
 				'Status': '<i class="fa-regular fa-wrench" style="color: black;"></i>',
 				'Created By': '<i class="fa-regular fa-user" style="color: black;"></i>',
+				'R.D Date': '<i class="fa-regular fa-calendar" style="color: black;"></i>',
+				'R.D Time': '<i class="fa-regular fa-clock-o" style="color: black;"></i>',
+				'Callback date': '<i class="fa-regular fa-calendar" style="color: black;"></i>',
+				'Calback time': '<i class="fa-regular fa-clock-o" style="color: black;"></i>',
 			};
-
 			if (card.column === ProjectStatusOptions.RequestCallback) {
 				render_fields.push(...['customer', 'callback_date', 'callback_time']);
 			}
 			if (card.column === ProjectStatusOptions.RemoteDiagnose) {
 				render_fields.push(...['remote_diagnostic_date', 'remote_diagnostic_time']);
 			}
-			if (card.column == ProjectStatusOptions.InParking || card.column == ProjectStatusOptions.InQueue) {
-				render_fields.push(...['bring_car_date']);
+			if (![ProjectStatusOptions.InQueue, ProjectStatusOptions.InParking].includes(card.column)) {
+				render_fields = render_fields.filter(field => field !== "queue_position");
 			}
 			for (let field_name of render_fields) {
 				let field =
@@ -881,7 +885,6 @@ const ProjectStatusOptions = {
 					frappe.model.get_std_field(field_name);
 				let icon = icon_map[field.label] || __(field.label);
 				let label = cur_list.board.show_labels ? `<span title="${__(field.label)}">${icon} </span>` : "";
-				console.log('label', label);
 				let value = frappe.format(card.doc[field_name], field);
 				fields.push(`
 					<div class="text-muted text-truncate">

@@ -1,8 +1,9 @@
-<div class="kanban-card-wrapper {{ disable_click }}" data-name="{{encodeURIComponent(name)}}" title="{{client_description}}">
+<div class="kanban-card-wrapper {{ disable_click }}" data-name="{{encodeURIComponent(name)}}"
+	title="{{client_description}}">
 	<div class="kanban-card content">
 		{% if(image_url) { %}
 		<div class="kanban-image">
-			<img  src="{{image_url}}" alt="{{title}}">
+			<img src="{{image_url}}" alt="{{title}}">
 		</div>
 		{% } %}
 		<div class="kanban-card-body">
@@ -13,12 +14,58 @@
 					</div>
 				</a>
 			</div>
+			<div class="circle">
+				<span class="circle-icon ">{{ queue_position }}</span>
+			</div>
+
 			<div class="kanban-handler">
 				<div class="kanban-card-doc text-muted">
 					{{ doc_content }}
 				</div>
-			<div class="kanban-card-meta"></div>
+				<div class="kanban-card-meta"></div>
 			</div>
 		</div>
 	</div>
 </div>
+
+<style>
+	.circle {
+		position: absolute;
+		margin-left: 9rem;
+		margin-top: -3.8rem;
+		/* border: 0.1875em solid #0F1C3F;
+		border-radius: 50%; */
+		height: 3em;
+		width: 3em;
+	}
+
+	.circle-icon {
+		height: 50%;
+		left: 50%;
+		position: absolute;
+		stroke: currentColor;
+		stroke-width: 0;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		width: 50%;
+		color: #d14343;
+		animation: heartbeat 1s infinite;
+	}
+
+	@keyframes heartbeat {
+
+		0%,
+		100% {
+			transform: translate(-50%, -50%) scale(1);
+		}
+
+		25%,
+		75% {
+			transform: translate(-50%, -50%) scale(1.1);
+		}
+
+		50% {
+			transform: translate(-50%, -50%) scale(1.2);
+		}
+	}
+</style>
