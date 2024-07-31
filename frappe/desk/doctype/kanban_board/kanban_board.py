@@ -2,6 +2,7 @@
 # License: MIT. See LICENSE
 
 import json
+from time import sleep
 from urllib import request
 from frappe.integrations.utils import make_post_request
 import frappe
@@ -350,3 +351,11 @@ def call_freeze_queue_position_message(aws_url):
                 headers={"Content-Type": "application/json"},
                 data=json.dumps({}),
             )
+
+@frappe.whitelist()
+def kanban_project_refresh(name:str):
+    frappe.publish_realtime("kanban_project_get_data", {"skip_user_session": True})
+    sleep(2)
+    frappe.publish_realtime("kanban_project_refresh")
+    frappe.publish_realtime("list_update",{"doctype":"Project", "user":"support@tvsgroup.nl", "name": name})
+    return "called kanban_project_refresh"

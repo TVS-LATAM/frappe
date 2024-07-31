@@ -592,6 +592,11 @@ const ProjectStatusOptions = {
 	frappe.views.KanbanBoardColumn = function (column, wrapper, board_perms, cards_by_columns = []) {
 		var self = {};
 		var filtered_cards = [];
+		frappe.realtime.doctype_subscribe(this.doctype);
+		frappe.realtime.off("kanban_project_refresh");
+		frappe.realtime.on('kanban_project_refresh', () => {
+			make_dom(true)
+		});
 
 		function init() {
 			make_dom();
@@ -603,6 +608,7 @@ const ProjectStatusOptions = {
 			bind_add_card();
 			bind_options();
 			get_and_set_columns_titles_with_counter()
+			
 		}
 
 		function get_total_cards() {
@@ -617,7 +623,7 @@ const ProjectStatusOptions = {
 		}
 
 		let loading = false
-		function make_dom() {
+		function make_dom(call=false) {
 			self.$kanban_column = $(
 				frappe.render_template("kanban_column", {
 					title: column.title,
@@ -660,6 +666,24 @@ const ProjectStatusOptions = {
 							loading = true;
 						}
 					}
+				})
+			}
+			if(call){
+				frappe.call({
+					method: 'frappe.desk.reportview.get',
+					args: {
+						"doctype": "Project",
+						"fields": ["*"],
+						"filters": [['status', '=', column.title]],
+						"start": 0,
+						"page_length": 10,
+						"view": "List",
+						"group_by": "`tabProject`.`name`",
+						"with_comment_count": 1
+					}
+				}).then((res) => {
+					const data = frappe.utils.dict(res.message.keys, res.message.values)
+					store.dispatch("update_cards", data);
 				})
 			}
 		}
@@ -718,7 +742,6 @@ const ProjectStatusOptions = {
 						old_index: e.oldIndex,
 						new_index: e.newIndex,
 					};
-					console.log('args', args)
 					store.dispatch("update_order_for_single_card", args);
 				},
 				onAdd: function () { },
@@ -881,7 +904,6 @@ const ProjectStatusOptions = {
 					frappe.model.get_std_field(field_name);
 				let icon = icon_map[field.label] || __(field.label);
 				let label = cur_list.board.show_labels ? `<span title="${__(field.label)}">${icon} </span>` : "";
-				console.log('label', label);
 				let value = frappe.format(card.doc[field_name], field);
 				fields.push(`
 					<div class="text-muted text-truncate">

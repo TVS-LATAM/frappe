@@ -145,7 +145,11 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 
 	setup_realtime_updates() {
 		this.pending_document_refreshes = [];
-
+		let skip_user_session = false
+		frappe.realtime.off("kanban_project_get_data");
+		frappe.realtime.on("kanban_project_get_data", (data) => {
+			skip_user_session = data.skip_user_session
+		})
 		if (this.list_view_settings?.disable_auto_refresh || this.realtime_events_setup) {
 			return;
 		}
@@ -162,8 +166,7 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 			if (this.avoid_realtime_update()) {
 				return;
 			}
-			if (data.user != frappe.session.user) {
-				console.log("list_update kanban: ", data)
+			if (data.user != frappe.session.user || skip_user_session) {
 				frappe.call({
 					method: 'frappe.desk.reportview.get',
 					args: {
