@@ -1,3 +1,4 @@
+from math import log
 import os
 import re
 from io import BytesIO
@@ -130,30 +131,37 @@ def capitalize_first_letter(text):
     return " ".join(word.capitalize() for word in text.split())
 
 def extract_address_details(text):
-    # Define patterns for the address components
-    address_pattern = r"Address Line 1 (.*?)<br>"
-    zip_code_pattern = r"(\d{5,6})<br>"
-    city_pattern = r"City/Town (.*?)<br>"
-    country_pattern = r"(\w+)<br>"
+    # Split the text by line breaks
+    lines = text.split('<br>')
 
-    # Extract the components using the patterns
-    address = re.search(address_pattern, text)
-    zip_code = re.search(zip_code_pattern, text)
-    city = re.search(city_pattern, text)
-    country = re.search(country_pattern, text)
-
-    # Get the matched strings or None if not found
-    address = address.group(1) if address else ""
-    zip_code = zip_code.group(1) if zip_code else ""
-    city = city.group(1) if city else None
-    country = country.group(1) if country else ""
-    obj = {
-        "address": address,
-        "zip_code": zip_code,
-        "city": city,
-        "country": country
+    # Initialize a dictionary to store extracted values
+    details = {
+        "address": "",
+        "address_2": "",
+        "city": "",
+        "state_province": "",
+        "zip_code": "",
+        "country": ""
     }
-    return obj
+
+   # Remove empty lines and whitespace
+    lines = [line.strip() for line in lines if line.strip()]
+
+    # Map lines to address components based on their position
+    if len(lines) > 0:
+        details["address"] = lines[0]
+    if len(lines) > 1:
+        details["address_2"] = lines[1]
+    if len(lines) > 2:
+        details["city"] = lines[2]
+    if len(lines) > 3:
+        details["state_province"] = lines[3]
+    if len(lines) > 4:
+        details["zip_code"] = lines[4]
+    if len(lines) > 5:
+        details["country"] = lines[5]
+
+    return details
     
 def format_address_detail_to_print(text):
     address = text['address'] if 'address' in text else ""
@@ -178,6 +186,7 @@ def download_pdf(
     doctype, name, format=None, doc=None, no_letterhead=0, language=None, letterhead=None
 ):
     doc = doc or frappe.get_doc(doctype, name)
+    
     items_custom = []
     if((doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice")):
         for item in doc.get("items"):
@@ -207,7 +216,7 @@ def download_pdf(
         elif doc.get("address_display"):
             address_data = extract_address_details(doc.get("address_display"))
         else:
-            address_data = None
+            address_data = ""
 
         if address_data:
             address_formated = format_address_detail_to_print(address_data)

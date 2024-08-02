@@ -40,8 +40,8 @@ def get_context(context):
     else:
         doc = frappe.get_doc(frappe.form_dict.doctype, frappe.form_dict.name)
     
-    print("==============> ", vars(doc))
     is_address_formated = doc.get("is_address_formated")
+    
     if doc.get("customer_name"):
         doc.customer_name = capitalize_first_letter(doc.get("customer_name"))
     
@@ -53,7 +53,7 @@ def get_context(context):
         elif doc.get("address_display"):
             address_data = extract_address_details(doc.get("address_display"))
         else:
-            address_data = None
+            address_data = ""
 
         if address_data:
             doc.address_display = format_address_detail_to_print(address_data)
@@ -342,11 +342,53 @@ def get_html_and_style(
     if parse_doc.get("customer_name"):
         parse_doc["customer_name"] = capitalize_first_letter(parse_doc.get("customer_name"))
         doc = json.dumps(parse_doc)
+        
+        
+    is_address_formated = parse_doc.get("is_address_formated")
+
+    if (parse_doc.get("doctype") in ["Quotation", "Sales Invoice"]) and (not is_address_formated):
+        if parse_doc.get("billing_address"):
+            address_data = extract_address_details(parse_doc.get("billing_address"))
+        elif parse_doc.get("shipping_address"):
+            address_data = extract_address_details(parse_doc.get("shipping_address"))
+        elif parse_doc.get("address_display"):
+            address_data = extract_address_details(parse_doc.get("address_display"))
+        else:
+            address_data = ""
+
+        if address_data:
+            parse_doc["address_display"] = format_address_detail_to_print(address_data)
+        else:
+            parse_doc["address_display"] = ""
+    
+    items_custom = []
+    if((parse_doc.get("doctype") == "Quotation" or parse_doc.get("doctype") == "Sales Invoice")):
+        for item in parse_doc.get("items"):
+            if(parse_doc.get("doctype") == "Sales Invoice"):
+                value = frappe.get_doc("Sales Invoice Item", item["name"])
+            if(parse_doc.get("doctype") == "Quotation"):
+                value = frappe.get_doc("Quotation Item", item["name"])
+            items_custom.append({
+                    "item_code": value.get("item_code"),
+                    "item_name": value.get("item_name"),
+                    "description": value.get("description"),
+                    "brand": value.get("brand"),
+                    "base_amount": value.get("base_amount"),
+                    "tvs_pn": value.get("tvs_pn") or "",
+                    "qty": convert_to_int(value.get("qty")),
+                    "rate": value.get("rate")
+                    })
+        parse_doc["items_custom"] = items_custom
 
     if isinstance(name, str):
         document = frappe.get_doc(doc, name)
     else:
         document = frappe.get_doc(json.loads(doc))
+        
+    if parse_doc.get("doctype") in ["Quotation", "Sales Invoice"]:
+        document.address_display = parse_doc.get("address_display")
+        document.items_custom = parse_doc.get("items_custom")
+
 
     document.check_permission()
 
@@ -376,30 +418,37 @@ def capitalize_first_letter(text):
     return " ".join(word.capitalize() for word in text.split())
 
 def extract_address_details(text):
-    # Define patterns for the address components
-    address_pattern = r"Address Line 1 (.*?)<br>"
-    zip_code_pattern = r"(\d{5,6})<br>"
-    city_pattern = r"City/Town (.*?)<br>"
-    country_pattern = r"(\w+)<br>"
+    # Split the text by line breaks
+    lines = text.split('<br>')
 
-    # Extract the components using the patterns
-    address = re.search(address_pattern, text)
-    zip_code = re.search(zip_code_pattern, text)
-    city = re.search(city_pattern, text)
-    country = re.search(country_pattern, text)
-
-    # Get the matched strings or None if not found
-    address = address.group(1) if address else ""
-    zip_code = zip_code.group(1) if zip_code else ""
-    city = city.group(1) if city else ""
-    country = country.group(1) if country else ""
-    obj = {
-        "address": address,
-        "zip_code": zip_code,
-        "city": city,
-        "country": country
+    # Initialize a dictionary to store extracted values
+    details = {
+        "address": "",
+        "address_2": "",
+        "city": "",
+        "state_province": "",
+        "zip_code": "",
+        "country": ""
     }
-    return obj
+
+   # Remove empty lines and whitespace
+    lines = [line.strip() for line in lines if line.strip()]
+
+    # Map lines to address components based on their position
+    if len(lines) > 0:
+        details["address"] = lines[0]
+    if len(lines) > 1:
+        details["address_2"] = lines[1]
+    if len(lines) > 2:
+        details["city"] = lines[2]
+    if len(lines) > 3:
+        details["state_province"] = lines[3]
+    if len(lines) > 4:
+        details["zip_code"] = lines[4]
+    if len(lines) > 5:
+        details["country"] = lines[5]
+
+    return details
     
 def format_address_detail_to_print(text):
     address = text['address'] if 'address' in text else ""
