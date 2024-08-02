@@ -40,21 +40,44 @@ def get_context(context):
     else:
         doc = frappe.get_doc(frappe.form_dict.doctype, frappe.form_dict.name)
     
-    # print("==============> ", vars(doc))
+    print("==============> ", vars(doc))
     is_address_formated = doc.get("is_address_formated")
     if doc.get("customer_name"):
         doc.customer_name = capitalize_first_letter(doc.get("customer_name"))
+    
+    if (doc.get("doctype") in ["Quotation", "Sales Invoice"]) and (not is_address_formated):
+        if doc.get("billing_address"):
+            address_data = extract_address_details(doc.get("billing_address"))
+        elif doc.get("shipping_address"):
+            address_data = extract_address_details(doc.get("shipping_address"))
+        elif doc.get("address_display"):
+            address_data = extract_address_details(doc.get("address_display"))
+        else:
+            address_data = None
 
-    if doc.get("address_display") and (not is_address_formated or is_address_formated != True) and (doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice"):
-        address_data = extract_address_details(doc.get("address_display"))
-        address_formated = format_address_detail_to_print(address_data)
-        doc.address_display = address_formated
-
-    elif doc.get("shipping_address") and (not is_address_formated or is_address_formated != True) and (doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice"):
-        address_data = extract_address_details(doc.get("shipping_address"))
-        address_formated = format_address_detail_to_print(address_data)
-        doc.address_display = address_formated
-
+        if address_data:
+            doc.address_display = format_address_detail_to_print(address_data)
+        else:
+            doc.address_display = ""
+    
+    items_custom = []
+    if((doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice")):
+        for item in doc.get("items"):
+            if(doc.get("doctype") == "Sales Invoice"):
+                value = frappe.get_doc("Sales Invoice Item", item.name)
+            if(doc.get("doctype") == "Quotation"):
+                value = frappe.get_doc("Quotation Item", item.name)
+            items_custom.append({
+                    "item_code": value.get("item_code"),
+                    "item_name": value.get("item_name"),
+                    "description": value.get("description"),
+                    "brand": value.get("brand"),
+                    "base_amount": value.get("base_amount"),
+                    "tvs_pn": value.get("tvs_pn") or "",
+                    "qty": convert_to_int(value.get("qty")),
+                    "rate": value.get("rate")
+                    })
+        doc.items_custom = items_custom
         
     set_link_titles(doc)
 
@@ -97,6 +120,16 @@ def get_context(context):
         "key": frappe.form_dict.get("key"),
     }
 
+def convert_to_int(value):
+    try:
+        # Convert the value to a float first to handle both numeric strings and numbers
+        float_value = float(value)
+        # Convert the float value to an integer
+        int_value = int(float_value)
+        return int_value
+    except ValueError:
+        # If the value cannot be converted to a float, raise an error
+        raise ValueError("The input value is not a number or a numeric string")
 
 def get_print_format_doc(print_format_name, meta):
     """Returns print format document"""
@@ -356,10 +389,10 @@ def extract_address_details(text):
     country = re.search(country_pattern, text)
 
     # Get the matched strings or None if not found
-    address = address.group(1) if address else None
-    zip_code = zip_code.group(1) if zip_code else None
-    city = city.group(1) if city else None
-    country = country.group(1) if country else None
+    address = address.group(1) if address else ""
+    zip_code = zip_code.group(1) if zip_code else ""
+    city = city.group(1) if city else ""
+    country = country.group(1) if country else ""
     obj = {
         "address": address,
         "zip_code": zip_code,

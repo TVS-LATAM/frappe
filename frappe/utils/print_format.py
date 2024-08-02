@@ -143,10 +143,10 @@ def extract_address_details(text):
     country = re.search(country_pattern, text)
 
     # Get the matched strings or None if not found
-    address = address.group(1) if address else None
-    zip_code = zip_code.group(1) if zip_code else None
+    address = address.group(1) if address else ""
+    zip_code = zip_code.group(1) if zip_code else ""
     city = city.group(1) if city else None
-    country = country.group(1) if country else None
+    country = country.group(1) if country else ""
     obj = {
         "address": address,
         "zip_code": zip_code,
@@ -185,33 +185,35 @@ def download_pdf(
                 value = frappe.get_doc("Sales Invoice Item", item.name)
             if(doc.get("doctype") == "Quotation"):
                 value = frappe.get_doc("Quotation Item", item.name)
-            print("======================> value ", vars(value))
             items_custom.append({
                     "item_code": value.get("item_code"),
                     "item_name": value.get("item_name"),
                     "description": value.get("description"),
                     "brand": value.get("brand"),
                     "base_amount": value.get("base_amount"),
-                    "tvs_pn": value.get("tvs_pn"),
+                    "tvs_pn": value.get("tvs_pn") or "",
                     "qty": convert_to_int(value.get("qty")),
                     "rate": value.get("rate")
                     })
         doc.items_custom = items_custom
-        
-    print("==============> ", vars(doc))
     if doc.get("customer_name"):
         doc.customer_name = capitalize_first_letter(doc.get("customer_name"))
         
-    if doc.get("address_display") and (doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice"):
-        address_data = extract_address_details(doc.get("address_display"))
-        address_formated = format_address_detail_to_print(address_data)
-        doc.address_display = address_formated
-        doc.is_address_formated = True
-    elif(doc.get("shipping_address")) and (doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice"):
-        address_data = extract_address_details(doc.get("shipping_address"))
-        address_formated = format_address_detail_to_print(address_data)
-        doc.address_display = address_formated
-        doc.is_address_formated = True
+    if doc.get("doctype") in ["Quotation", "Sales Invoice"]:
+        if doc.get("billing_address"):
+            address_data = extract_address_details(doc.get("billing_address"))
+        elif doc.get("shipping_address"):
+            address_data = extract_address_details(doc.get("shipping_address"))
+        elif doc.get("address_display"):
+            address_data = extract_address_details(doc.get("address_display"))
+        else:
+            address_data = None
+
+        if address_data:
+            address_formated = format_address_detail_to_print(address_data)
+            doc.address_display = address_formated
+            doc.is_address_formated = True
+
 
     validate_print_permission(doc)
 
