@@ -7,6 +7,7 @@ import os
 import re
 from typing import TYPE_CHECKING, Optional
 
+from erpnext.accounts.custom import address
 import frappe
 from frappe import _, get_module_path
 from frappe.core.doctype.access_log.access_log import make_access_log
@@ -38,10 +39,23 @@ def get_context(context):
         doc = frappe.form_dict.doc
     else:
         doc = frappe.get_doc(frappe.form_dict.doctype, frappe.form_dict.name)
-
+    
+    # print("==============> ", vars(doc))
+    is_address_formated = doc.get("is_address_formated")
     if doc.get("customer_name"):
         doc.customer_name = capitalize_first_letter(doc.get("customer_name"))
 
+    if doc.get("address_display") and (not is_address_formated or is_address_formated != True) and (doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice"):
+        address_data = extract_address_details(doc.get("address_display"))
+        address_formated = format_address_detail_to_print(address_data)
+        doc.address_display = address_formated
+
+    elif doc.get("shipping_address") and (not is_address_formated or is_address_formated != True) and (doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice"):
+        address_data = extract_address_details(doc.get("shipping_address"))
+        address_formated = format_address_detail_to_print(address_data)
+        doc.address_display = address_formated
+
+        
     set_link_titles(doc)
 
     settings = frappe.parse_json(frappe.form_dict.settings)
@@ -327,6 +341,39 @@ def capitalize_first_letter(text):
     if not text:
         return text
     return " ".join(word.capitalize() for word in text.split())
+
+def extract_address_details(text):
+    # Define patterns for the address components
+    address_pattern = r"Address Line 1 (.*?)<br>"
+    zip_code_pattern = r"(\d{5,6})<br>"
+    city_pattern = r"City/Town (.*?)<br>"
+    country_pattern = r"(\w+)<br>"
+
+    # Extract the components using the patterns
+    address = re.search(address_pattern, text)
+    zip_code = re.search(zip_code_pattern, text)
+    city = re.search(city_pattern, text)
+    country = re.search(country_pattern, text)
+
+    # Get the matched strings or None if not found
+    address = address.group(1) if address else None
+    zip_code = zip_code.group(1) if zip_code else None
+    city = city.group(1) if city else None
+    country = country.group(1) if country else None
+    obj = {
+        "address": address,
+        "zip_code": zip_code,
+        "city": city,
+        "country": country
+    }
+    return obj
+    
+def format_address_detail_to_print(text):
+    address = text['address'] if 'address' in text else ""
+    zip_code = text['zip_code'] if 'zip_code' in text else ""
+    city = text['city'] if 'city' in text else ""
+    country = text['country'] if 'country' in text else ""
+    return f"{address}<br>{zip_code} {city}<br>{country}"
 
 
 @frappe.whitelist()

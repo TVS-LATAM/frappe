@@ -1,4 +1,5 @@
 import os
+import re
 from io import BytesIO
 
 from pypdf import PdfWriter
@@ -128,14 +129,89 @@ def capitalize_first_letter(text):
         return text
     return " ".join(word.capitalize() for word in text.split())
 
+def extract_address_details(text):
+    # Define patterns for the address components
+    address_pattern = r"Address Line 1 (.*?)<br>"
+    zip_code_pattern = r"(\d{5,6})<br>"
+    city_pattern = r"City/Town (.*?)<br>"
+    country_pattern = r"(\w+)<br>"
+
+    # Extract the components using the patterns
+    address = re.search(address_pattern, text)
+    zip_code = re.search(zip_code_pattern, text)
+    city = re.search(city_pattern, text)
+    country = re.search(country_pattern, text)
+
+    # Get the matched strings or None if not found
+    address = address.group(1) if address else None
+    zip_code = zip_code.group(1) if zip_code else None
+    city = city.group(1) if city else None
+    country = country.group(1) if country else None
+    obj = {
+        "address": address,
+        "zip_code": zip_code,
+        "city": city,
+        "country": country
+    }
+    return obj
+    
+def format_address_detail_to_print(text):
+    address = text['address'] if 'address' in text else ""
+    zip_code = text['zip_code'] if 'zip_code' in text else ""
+    city = text['city'] if 'city' in text else ""
+    country = text['country'] if 'country' in text else ""
+    return f"{address}<br>{zip_code} {city}<br>{country}"
+
+def convert_to_int(value):
+    try:
+        # Convert the value to a float first to handle both numeric strings and numbers
+        float_value = float(value)
+        # Convert the float value to an integer
+        int_value = int(float_value)
+        return int_value
+    except ValueError:
+        # If the value cannot be converted to a float, raise an error
+        raise ValueError("The input value is not a number or a numeric string")
 
 @frappe.whitelist(allow_guest=True)
 def download_pdf(
     doctype, name, format=None, doc=None, no_letterhead=0, language=None, letterhead=None
 ):
     doc = doc or frappe.get_doc(doctype, name)
+    items_custom = []
+    if((doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice")):
+        for item in doc.get("items"):
+            if(doc.get("doctype") == "Sales Invoice"):
+                value = frappe.get_doc("Sales Invoice Item", item.name)
+            if(doc.get("doctype") == "Quotation"):
+                value = frappe.get_doc("Quotation Item", item.name)
+            print("======================> value ", vars(value))
+            items_custom.append({
+                    "item_code": value.get("item_code"),
+                    "item_name": value.get("item_name"),
+                    "description": value.get("description"),
+                    "brand": value.get("brand"),
+                    "base_amount": value.get("base_amount"),
+                    "tvs_pn": value.get("tvs_pn"),
+                    "qty": convert_to_int(value.get("qty")),
+                    "rate": value.get("rate")
+                    })
+        doc.items_custom = items_custom
+        
+    print("==============> ", vars(doc))
     if doc.get("customer_name"):
         doc.customer_name = capitalize_first_letter(doc.get("customer_name"))
+        
+    if doc.get("address_display") and (doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice"):
+        address_data = extract_address_details(doc.get("address_display"))
+        address_formated = format_address_detail_to_print(address_data)
+        doc.address_display = address_formated
+        doc.is_address_formated = True
+    elif(doc.get("shipping_address")) and (doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice"):
+        address_data = extract_address_details(doc.get("shipping_address"))
+        address_formated = format_address_detail_to_print(address_data)
+        doc.address_display = address_formated
+        doc.is_address_formated = True
 
     validate_print_permission(doc)
 
