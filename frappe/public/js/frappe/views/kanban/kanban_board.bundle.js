@@ -855,7 +855,6 @@ const ProjectStatusOptions = {
 		}
 
 		function get_doc_content(card) {
-			console.log('card', card.doc.appointment_date)
 			let fields = [];
 			let render_fields = [...cur_list.board.fields];
 			const icon_map = {
