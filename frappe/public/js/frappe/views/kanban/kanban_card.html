@@ -1,9 +1,9 @@
-<div class="kanban-card-wrapper {{ disable_click }}" data-name="{{encodeURIComponent(name)}}"
-	title="{{client_description}}">
+<div class="kanban-card-wrapper {{ disable_click }}" data-name="{{ encodeURIComponent(name) }}"
+	title="{{ client_description }}">
 	<div class="kanban-card content">
 		{% if(image_url) { %}
 		<div class="kanban-image">
-			<img src="{{image_url}}" alt="{{title}}">
+			<img src="{{ image_url }}" alt="{{ title }}">
 		</div>
 		{% } %}
 		<div class="kanban-card-body">
@@ -13,9 +13,19 @@
 						{{ title }}
 					</div>
 				</a>
-				{% if(queue_position !==0) { %}
-				<div class="circle">
-					<span class="circle-icon ">{{ queue_position }}</span>
+				{% if(queue_position !== 0) { %}
+				<div class="circle {% if appointment_date %}has-appointment{% endif %}">
+					<span class="circle-icon">
+						{% if appointment_date %}
+						<i class="fa-regular fa-calendar"></i>
+						{% else %}
+						<span style="user-select: none;" title="Queue Position">{{ queue_position }}</span>
+						{% endif %}
+					</span>
+					{% if appointment_date %}
+					<div class="hover-date" title="Appointment Date: Day-Month">{{ appointment_date }}
+					</div>
+					{% endif %}
 				</div>
 				{% } %}
 			</div>
@@ -52,11 +62,37 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		overflow: hidden;
+	}
+
+	.circle.red {
+		border-color: #d14343;
+		background-color: rgba(255, 0, 0, 0.2);
 	}
 
 	.circle-icon {
 		color: #d14343;
 		animation: heartbeat 1s infinite;
+	}
+
+	.has-appointment:hover .circle-icon {
+		opacity: 0;
+	}
+
+	.has-appointment .hover-date {
+		position: absolute;
+		font-size: 0.8em;
+		color: #d14343;
+		white-space: nowrap;
+		opacity: 0;
+		transform: scale(0);
+		transition: opacity 0.3s, transform 0.3s;
+		user-select: none;
+	}
+
+	.has-appointment:hover .hover-date {
+		opacity: 1;
+		transform: scale(1);
 	}
 
 	@keyframes heartbeat {
