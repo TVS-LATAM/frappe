@@ -14,7 +14,7 @@
 					</div>
 				</a>
 				{% if(queue_position !== 0) { %}
-				<div class="circle {% if appointment_date %}has-appointment{% endif %}">
+				<div class="circle {% if appointment_date %}has-appointment red{% endif %}">
 					<span class="circle-icon">
 						{% if appointment_date %}
 						<i class="fa-regular fa-calendar"></i>
@@ -67,7 +67,6 @@
 
 	.circle.red {
 		border-color: #d14343;
-		background-color: rgba(255, 0, 0, 0.2);
 	}
 
 	.circle-icon {
