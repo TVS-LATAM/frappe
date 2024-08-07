@@ -837,7 +837,6 @@ const ProjectStatusOptions = {
 	};
 
 	frappe.views.KanbanBoardCard = function (card, wrapper) {
-
 		var self = {};
 
 		function init() {
@@ -856,9 +855,11 @@ const ProjectStatusOptions = {
 				client_description: frappe.utils.html2text(card.doc.client_description),
 				image_url: cur_list.get_image_url(card),
 				form_link: frappe.utils.get_form_link(card.doctype, card.name),
-				queue_position: 0
+				queue_position: 0,
+				appointment_date: card.doc.appointment_date
+					? card.doc.appointment_date.split('-').slice(1).reverse().join('-')
+					: ""
 			};
-
 			if ([ProjectStatusOptions.InQueue, ProjectStatusOptions.InParking].includes(card.column)) {
 				opts.queue_position = card.doc.queue_position || "";
 			}
@@ -920,7 +921,6 @@ const ProjectStatusOptions = {
 					</div>
 				`);
 			}
-
 			if (card.border.message) {
 				fields.push(`
 					<div class="text-muted text-truncate">
