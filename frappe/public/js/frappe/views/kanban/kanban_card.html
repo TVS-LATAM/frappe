@@ -17,15 +17,11 @@
 				<div class="circle {% if appointment_date %}has-appointment red{% endif %}">
 					<span class="circle-icon">
 						{% if appointment_date %}
-						<i class="fa-regular fa-calendar"></i>
+						<div class="hover-date" title="Appointment Date: Day-Month">{{ appointment_date }}</div>
 						{% else %}
 						<span style="user-select: none;" title="Queue Position">{{ queue_position }}</span>
 						{% endif %}
 					</span>
-					{% if appointment_date %}
-					<div class="hover-date" title="Appointment Date: Day-Month">{{ appointment_date }}
-					</div>
-					{% endif %}
 				</div>
 				{% } %}
 			</div>
@@ -38,6 +34,7 @@
 		</div>
 	</div>
 </div>
+
 
 <style>
 	.kanban-title-area {
@@ -69,29 +66,22 @@
 		border-color: #d14343;
 	}
 
-	.circle-icon {
-		color: #d14343;
-		animation: heartbeat 1s infinite;
-	}
-
-	.has-appointment:hover .circle-icon {
-		opacity: 0;
-	}
-
-	.has-appointment .hover-date {
-		position: absolute;
-		font-size: 0.8em;
+	.hover-date {
+		font-size: 0.7em;
 		color: #d14343;
 		white-space: nowrap;
-		opacity: 0;
-		transform: scale(0);
-		transition: opacity 0.3s, transform 0.3s;
+		transform: scale(0.8);
 		user-select: none;
+		transition: transform 0.3s ease;
 	}
 
 	.has-appointment:hover .hover-date {
-		opacity: 1;
 		transform: scale(1);
+	}
+
+	.circle-icon {
+		color: #d14343;
+		animation: heartbeat 1s infinite;
 	}
 
 	@keyframes heartbeat {
