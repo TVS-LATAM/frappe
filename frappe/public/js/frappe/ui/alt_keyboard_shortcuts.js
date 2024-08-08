@@ -56,6 +56,7 @@ frappe.ui.keys.bind_shortcut_group_event = () => {
 		}
 	});
 	$(document).on("keyup", (e) => {
+		console.log("====> e keyup ", e, " == keycode ", e.keyCode)
 		if (e.key === "Alt") {
 			unhighlight_alt_shortcuts();
 		}
