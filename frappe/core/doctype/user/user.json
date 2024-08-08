@@ -12,6 +12,7 @@
   "request_a_callback_notification",
   "remote_diagnose_notification",
   "whatsapp_notification",
+  "email_notification_log",
   "phone_notification",
   "section_break_3",
   "email",
@@ -151,6 +152,17 @@
     "oldfieldtype": "Data",
     "in_global_search": 1,
    "in_standard_filter": 1
+   },
+   {
+    "default": "0",
+    "fieldname": "email_notification_log",
+    "fieldtype": "Check",
+    "label": "Email Notification Log",
+    "oldfieldname": "email_notification_log",
+    "oldfieldtype": "Check",
+    "in_global_search": 1,
+    "in_list_view": 1,
+    "in_standard_filter": 1
    },
   {
    "depends_on": "enabled",

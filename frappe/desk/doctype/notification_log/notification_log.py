@@ -1,6 +1,7 @@
 # Copyright (c) 2019, Frappe Technologies and contributors
 # License: MIT. See LICENSE
 
+from math import log
 import frappe
 from frappe import _
 from frappe.desk.doctype.notification_settings.notification_settings import (
@@ -8,7 +9,6 @@ from frappe.desk.doctype.notification_settings.notification_settings import (
 	is_notifications_enabled,
 )
 from frappe.model.document import Document
-
 
 class NotificationLog(Document):
 	# begin: auto-generated types
@@ -115,20 +115,29 @@ def _get_user_ids(user_emails):
 
 
 def send_notification_email(doc):
+	if(doc.for_user in users_not_allowed_receive_emails): return
 
 	if doc.type == "Energy Point" and doc.email_content is None:
 		return
 
 	from frappe.utils import get_url_to_form, strip_html
-
-	email = frappe.db.get_value("User", doc.for_user, "email")
-	if not email:
+	user = frappe.db.sql(
+		"""
+		SELECT *
+		FROM `tabUser`
+		WHERE name = %s
+		""",
+		(doc.for_user,),
+		as_dict=True,
+	)
+	has_permission_send_email = user[0].email_notification_log
+	email =  user[0].email
+	if not email or has_permission_send_email == 0:
 		return
 
 	doc_link = get_url_to_form(doc.document_type, doc.document_name)
 	header = get_email_header(doc)
 	email_subject = strip_html(doc.subject)
-
 	frappe.sendmail(
 		recipients=email,
 		subject=email_subject,
