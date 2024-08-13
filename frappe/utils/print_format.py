@@ -129,61 +129,10 @@ def capitalize_first_letter(text):
     if not text:
         return text
     return " ".join(word.capitalize() for word in text.split())
-
-def extract_address_details(text):
-    # Split the text by line breaks
-    lines = text.split('<br>')
-
-    # Initialize a dictionary to store extracted values
-    details = {
-        "address": "",
-        "address_2": "",
-        "city": "",
-        "state_province": "",
-        "zip_code": "",
-        "country": ""
-    }
-
-   # Remove empty lines and whitespace
-    lines = [line.strip() for line in lines if line.strip()]
-
-    # Map lines to address components based on their position
-    if len(lines) > 0:
-        details["address"] = lines[0]
-    if len(lines) > 1:
-        details["address_2"] = lines[1]
-    if len(lines) > 2:
-        details["city"] = lines[2]
-    if len(lines) > 3:
-        details["state_province"] = lines[3]
-    if len(lines) > 4:
-        details["zip_code"] = lines[4]
-    if len(lines) > 5:
-        details["country"] = lines[5] or lines[1]
-    elif len(lines) > 1:
-        details["country"] = lines[1]
-
-    return details
-
-def extract_address_details_from_database(data):
-    # Asegurarse de que la entrada sea un diccionario y contenga las claves necesarias
-    if not isinstance(data, dict) or 'address_line1' not in data:
-        return None
-    
-    details = {
-        "address": data.get('address_line1', ""),
-        "address_2": data.get('address_line2', ""),
-        "city": data.get('city', ""),
-        "state_province": data.get('state', ""),
-        "zip_code": data.get('pincode', ""),
-        "country": data.get('country', "")
-    }
-    
-    return details
  
     
 def format_address_detail_to_print(text):
-    address = text['address'] if 'address' in text else ""
+    address = text['address_line1'] if 'address_line1' in text else ""
     zip_code = text['zip_code'] if 'zip_code' in text else ""
     city = text['city'] if 'city' in text else ""
     country = text['country'] if 'country' in text else ""
@@ -205,7 +154,37 @@ def download_pdf(
     doctype, name, format=None, doc=None, no_letterhead=0, language=None, letterhead=None
 ):
     doc = doc or frappe.get_doc(doctype, name)
-    
+    if doc.get("customer_name"):
+        doc.customer_name = capitalize_first_letter(doc.get("customer_name"))
+        
+    if doc.get("doctype") in ["Quotation", "Sales Invoice"]:
+        if((doc.get("customer_name"))):
+            variable = doc.get("customer_name")
+            address_records = frappe.db.sql(
+                """
+                SELECT
+                    *
+                FROM
+                    `tabAddress` addr
+                WHERE
+                    addr.name LIKE %(name_pattern)s
+                """,
+                {
+                    "name_pattern": f"%{variable}%",
+                },
+                as_dict=1,
+            )
+        
+            if address_records and isinstance(address_records, list):
+                billing_address = next((address for address in address_records if address.get("address_type") == "Billing"), None)
+                shipping_address = next((address for address in address_records if address.get("address_type") == "Shipping"), None)
+                selected_address = billing_address or shipping_address or address_records[0]
+            else:
+                selected_address = None  # Maneja el caso cuando `addresses` no es válido
+
+            doc.address_display = format_address_detail_to_print(selected_address)
+            doc.is_address_formated = True
+
     items_custom = []
     if((doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice")):
         for item in doc.get("items"):
@@ -224,30 +203,7 @@ def download_pdf(
                     "rate": value.get("rate")
                     })
         doc.items_custom = items_custom
-    if doc.get("customer_name"):
-        doc.customer_name = capitalize_first_letter(doc.get("customer_name"))
-        
-    if doc.get("doctype") in ["Quotation", "Sales Invoice"]:
-        if doc.get("billing_address"):
-            address_data = extract_address_details(doc.get("billing_address"))
-        elif doc.get("shipping_address"):
-            address_data = extract_address_details(doc.get("shipping_address"))
-        elif doc.get("address_display"):
-            address_data = extract_address_details(doc.get("address_display"))
-        else:
-            address_data = ""
-
-        if address_data and address_data.get("country") and address_data.get("city"):
-            address_formated = format_address_detail_to_print(address_data)
-            doc.address_display = address_formated
-            doc.is_address_formated = True
-        elif(doc.get("customer_address")):
-            # Usar la función extract_address_details_from_database si no hay country
-            address_db = frappe.get_doc("Address", doc.get("customer_address"))
-            address_data = extract_address_details_from_database(vars(address_db))
-            doc.address_display = format_address_detail_to_print(address_data) if address_data else ""
-            doc.is_address_formated = True
-
+    
 
     validate_print_permission(doc)
 
