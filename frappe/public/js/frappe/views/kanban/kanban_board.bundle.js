@@ -78,7 +78,8 @@ const ProjectStatusOptions = {
 						wrapper: opts.wrapper,
 					});
 				},
-				update_cards: function (context, cards) {
+				update_cards: async function (context, cards) {
+					await getUnreadConversations()
 					var state = context.state;
 					var _cards = [].concat(
 						...cards
