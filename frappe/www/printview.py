@@ -355,9 +355,6 @@ def get_html_and_style(
     if parse_doc.get("customer_name"):
         parse_doc["customer_name"] = capitalize_first_letter(parse_doc.get("customer_name"))
         doc = json.dumps(parse_doc)
-        
-        
-    is_address_formated = parse_doc.get("is_address_formated")
 
     if parse_doc.get("doctype") in ["Quotation", "Sales Invoice"]:
         if((parse_doc.get("customer_name"))):
@@ -445,10 +442,11 @@ def capitalize_first_letter(text):
  
 def format_address_detail_to_print(text):
     address = text['address_line1'] if 'address_line1' in text else ""
+    address2 = text['address_line2'] if 'address_line2' in text else ""
     zip_code = text['zip_code'] if 'zip_code' in text else ""
     city = text['city'] if 'city' in text else ""
     country = text['country'] if 'country' in text else ""
-    return f"{address}<br>{zip_code} {city}<br>{country}"
+    return f"{address}<br>{address2}<br>{city}{zip_code}<br>{country}"
 
 
 @frappe.whitelist()
