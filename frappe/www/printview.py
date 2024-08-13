@@ -55,10 +55,14 @@ def get_context(context):
         else:
             address_data = ""
 
-        if address_data:
+        if address_data and address_data.get("country") and address_data.get("city"):
             doc.address_display = format_address_detail_to_print(address_data)
-        else:
-            doc.address_display = ""
+        elif doc.get("customer_address"):
+           print("==============> customer address ",doc.get("customer_address"))
+           address_db = frappe.get_doc("Address", doc.get("customer_address"))
+           print("----------> address_db ", vars(address_db))
+           address_data = extract_address_details_from_database(vars(address_db))
+           doc.address_display = format_address_detail_to_print(address_data) if address_data else ""
     
     items_custom = []
     if((doc.get("doctype") == "Quotation" or doc.get("doctype") == "Sales Invoice")):
@@ -356,10 +360,15 @@ def get_html_and_style(
         else:
             address_data = ""
 
-        if address_data:
+        # Validar si address_data tiene country
+        if address_data and address_data.get("country") and address_data.get("city"):
             parse_doc["address_display"] = format_address_detail_to_print(address_data)
-        else:
-            parse_doc["address_display"] = ""
+        elif(parse_doc.get("customer_address")):
+            # Usar la función extract_address_details_from_database si no hay country
+            address_db = frappe.get_doc("Address", parse_doc.get("customer_address"))
+            address_data = extract_address_details_from_database(vars(address_db))
+            parse_doc["address_display"] = format_address_detail_to_print(address_data) if address_data else ""
+
     
     items_custom = []
     if((parse_doc.get("doctype") == "Quotation" or parse_doc.get("doctype") == "Sales Invoice")):
@@ -446,8 +455,26 @@ def extract_address_details(text):
     if len(lines) > 4:
         details["zip_code"] = lines[4]
     if len(lines) > 5:
-        details["country"] = lines[5]
+        details["country"] = lines[5] or lines[1]
+    elif len(lines) > 1:
+        details["country"] = lines[1]
 
+    return details
+
+def extract_address_details_from_database(data):
+    # Asegurarse de que la entrada sea un diccionario y contenga las claves necesarias
+    if not isinstance(data, dict) or 'address_line1' not in data:
+        return None
+    
+    details = {
+        "address": data.get('address_line1', ""),
+        "address_2": data.get('address_line2', ""),
+        "city": data.get('city', ""),
+        "state_province": data.get('state', ""),
+        "zip_code": data.get('pincode', ""),
+        "country": data.get('country', "")
+    }
+    
     return details
     
 def format_address_detail_to_print(text):

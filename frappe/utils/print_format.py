@@ -159,9 +159,28 @@ def extract_address_details(text):
     if len(lines) > 4:
         details["zip_code"] = lines[4]
     if len(lines) > 5:
-        details["country"] = lines[5]
+        details["country"] = lines[5] or lines[1]
+    elif len(lines) > 1:
+        details["country"] = lines[1]
 
     return details
+
+def extract_address_details_from_database(data):
+    # Asegurarse de que la entrada sea un diccionario y contenga las claves necesarias
+    if not isinstance(data, dict) or 'address_line1' not in data:
+        return None
+    
+    details = {
+        "address": data.get('address_line1', ""),
+        "address_2": data.get('address_line2', ""),
+        "city": data.get('city', ""),
+        "state_province": data.get('state', ""),
+        "zip_code": data.get('pincode', ""),
+        "country": data.get('country', "")
+    }
+    
+    return details
+ 
     
 def format_address_detail_to_print(text):
     address = text['address'] if 'address' in text else ""
@@ -218,9 +237,15 @@ def download_pdf(
         else:
             address_data = ""
 
-        if address_data:
+        if address_data and address_data.get("country") and address_data.get("city"):
             address_formated = format_address_detail_to_print(address_data)
             doc.address_display = address_formated
+            doc.is_address_formated = True
+        elif(doc.get("customer_address")):
+            # Usar la función extract_address_details_from_database si no hay country
+            address_db = frappe.get_doc("Address", doc.get("customer_address"))
+            address_data = extract_address_details_from_database(vars(address_db))
+            doc.address_display = format_address_detail_to_print(address_data) if address_data else ""
             doc.is_address_formated = True
 
 
