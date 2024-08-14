@@ -130,11 +130,19 @@ def read_multi_pdf(output: PdfWriter) -> bytes:
 def format_address_detail_to_print(text):
     if not text:
         return ""
-    address = text.get('address_line1', '').strip()
-    address2 = text.get('address_line2', '').strip()
-    zip_code = text.get('pincode', '').strip()
-    city = text.get('city', '').strip()
-    country = text.get('country', '').strip()
+    
+    address = text.get('address_line1')
+    address2 = text.get('address_line2')
+    zip_code = text.get('pincode')
+    city = text.get('city')
+    country = text.get('country')
+    
+    address = address.strip() if address else None
+    address2 = address2.strip() if address2 else None
+    zip_code = zip_code.strip() if zip_code else None
+    city = city.strip() if city else None
+    country = country.strip() if country else None
+    
     address_parts = []
     if address:
         address_parts.append(address)
