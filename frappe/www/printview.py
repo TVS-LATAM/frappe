@@ -441,6 +441,8 @@ def capitalize_first_letter(text):
     return " ".join(word.capitalize() for word in text.split())
  
 def format_address_detail_to_print(text):
+    if text is None or text is "":
+        return "" 
     address = text['address_line1'] if 'address_line1' in text else ""
     address2 = text['address_line2'] if 'address_line2' in text else ""
     zip_code = text['zip_code'] if 'zip_code' in text else ""
