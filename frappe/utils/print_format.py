@@ -128,7 +128,7 @@ def read_multi_pdf(output: PdfWriter) -> bytes:
  
     
 def format_address_detail_to_print(text):
-    if text is None:
+    if not text:
         return ""
     address = text.get('address_line1', '').strip()
     address2 = text.get('address_line2', '').strip()
