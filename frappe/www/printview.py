@@ -46,8 +46,8 @@ def get_context(context):
         doc.customer_name = capitalize_first_letter(doc.get("customer_name"))
     
     if doc.get("doctype") in ["Quotation", "Sales Invoice"]:
-        if((doc.get("customer_name"))):
-            variable = doc.get("customer_name")
+        if((doc.get("name"))):
+            variable = doc.get("name")
             address_records = frappe.db.sql(
                 """
                 SELECT
@@ -56,6 +56,7 @@ def get_context(context):
                     `tabAddress` addr
                 WHERE
                     addr.name LIKE %(name_pattern)s
+                    AND addr.disabled = 0
                 """,
                 {
                     "name_pattern": f"%{variable}%",

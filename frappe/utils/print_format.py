@@ -171,6 +171,7 @@ def download_pdf(
                     `tabAddress` addr
                 WHERE
                     addr.name LIKE %(name_pattern)s
+                    AND addr.disabled = 0
                 """,
                 {
                     "name_pattern": f"%{variable}%",
