@@ -128,14 +128,27 @@ def read_multi_pdf(output: PdfWriter) -> bytes:
  
     
 def format_address_detail_to_print(text):
-    if text is None or text is "":
-        return "" 
-    address = text['address_line1'] if 'address_line1' in text else ""
-    address2 = text['address_line2'] if 'address_line2' in text else ""
-    zip_code = text['zip_code'] if 'zip_code' in text else ""
-    city = text['city'] if 'city' in text else ""
-    country = text['country'] if 'country' in text else ""
-    return f"{address}<br>{address2}<br>{city}{zip_code}<br>{country}"
+    if text is None:
+        return ""
+    address = text.get('address_line1', '').strip()
+    address2 = text.get('address_line2', '').strip()
+    zip_code = text.get('pincode', '').strip()
+    city = text.get('city', '').strip()
+    country = text.get('country', '').strip()
+    address_parts = []
+    if address:
+        address_parts.append(address)
+    if address2:
+        address_parts.append(address2)
+    if city and zip_code:
+        address_parts.append(f"{city} {zip_code}")
+    elif city:
+        address_parts.append(city)
+    elif zip_code:
+        address_parts.append(zip_code)
+    if country:
+        address_parts.append(country)
+    return "<br>".join(address_parts)
 
 def convert_to_int(value):
     try:
