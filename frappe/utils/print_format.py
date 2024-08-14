@@ -161,8 +161,8 @@ def download_pdf(
         doc.customer_name = capitalize_first_letter(doc.get("customer_name"))
         
     if doc.get("doctype") in ["Quotation", "Sales Invoice"]:
-        if((doc.get("customer_name"))):
-            variable = doc.get("customer_name")
+        if((doc.get("name"))):
+            variable = doc.get("name")
             address_records = frappe.db.sql(
                 """
                 SELECT
