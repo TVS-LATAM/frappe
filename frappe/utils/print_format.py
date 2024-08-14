@@ -124,6 +124,7 @@ def read_multi_pdf(output: PdfWriter) -> bytes:
     with BytesIO() as merged_pdf:
         output.write(merged_pdf)
         return merged_pdf.getvalue()
+
  
     
 def format_address_detail_to_print(text):
@@ -152,6 +153,7 @@ def download_pdf(
     doctype, name, format=None, doc=None, no_letterhead=0, language=None, letterhead=None
 ):
     doc = doc or frappe.get_doc(doctype, name)
+    
     original_customer_name  = ""
     if doc.get("customer_name"):
         original_customer_name = doc.get("original_customer_name")
@@ -178,7 +180,7 @@ def download_pdf(
                 customer_filtered = filter_customer(customers, original_customer_name)
                 
                 if customer_filtered:
-                    customer_filtered_name = customer_filtered["name"]
+                    customer_filtered_name = customer_filtered.name
                     address_records = get_address_display_list("Customer", customer_filtered_name)
                     
                     if address_records and isinstance(address_records, list):

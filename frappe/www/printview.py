@@ -42,11 +42,14 @@ def get_context(context):
         doc = frappe.get_doc(frappe.form_dict.doctype, frappe.form_dict.name)
     
     original_customer_name = ""
-    if doc.get("customer_name"):
-        doc.customer_name = capitalize_first_letter(doc.get("customer_name"))
     
     if doc.get("original_customer_name"):
         original_customer_name = doc.get("original_customer_name")
+    else:
+        original_customer_name = doc.get("customer_name")
+    
+    if doc.get("original_customer_name"):
+        doc.customer_name = capitalize_first_letter(doc.get("customer_name"))
     
     if doc.get("doctype") in ["Quotation", "Sales Invoice"]:
         if(original_customer_name):
@@ -68,7 +71,7 @@ def get_context(context):
                 customer_filtered = filter_customer(customers, original_customer_name)
                 
                 if customer_filtered:
-                    customer_filtered_name = customer_filtered["name"]
+                    customer_filtered_name = customer_filtered.name
                     address_records = get_address_display_list("Customer", customer_filtered_name)
                     
                     if address_records and isinstance(address_records, list):
@@ -361,36 +364,51 @@ def get_html_and_style(
 ):
     """Returns `html` and `style` of print format, used in PDF etc"""
     parse_doc = json.loads(doc)
+    
+    original_customer_name = ""
+    
+    if parse_doc.get("original_customer_name"):
+        original_customer_name = parse_doc.get("original_customer_name")
+    else:
+        original_customer_name = parse_doc.get("customer_name")
+    
     if parse_doc.get("customer_name"):
         parse_doc["customer_name"] = capitalize_first_letter(parse_doc.get("customer_name"))
         doc = json.dumps(parse_doc)
 
     if parse_doc.get("doctype") in ["Quotation", "Sales Invoice"]:
-        if((parse_doc.get("customer_name"))):
-            variable = parse_doc.get("customer_name")
-            address_records = frappe.db.sql(
-                """
-                SELECT
-                    *
-                FROM
-                    `tabAddress` addr
-                WHERE
-                    addr.name LIKE %(name_pattern)s
-                """,
-                {
-                    "name_pattern": f"%{variable}%",
-                },
-                as_dict=1,
-            )
-        
-            if address_records and isinstance(address_records, list):
-                billing_address = next((address for address in address_records if address.get("address_type") == "Billing"), None)
-                shipping_address = next((address for address in address_records if address.get("address_type") == "Shipping"), None)
-                selected_address = billing_address or shipping_address or address_records[0]
-            else:
-                selected_address = None  # Maneja el caso cuando `addresses` no es válido
-
-            parse_doc["address_display"] = format_address_detail_to_print(selected_address)   
+        if(original_customer_name):
+            customers = frappe.db.sql(
+                    """
+                    SELECT
+                        name, customer_name
+                    FROM
+                        `tabCustomer` cust
+                    WHERE
+                        cust.customer_name = %(name_pattern)s
+                    """,
+                    {
+                        "name_pattern": original_customer_name,
+                    },
+                    as_dict=1,
+                )
+            if len(customers):
+                customer_filtered = filter_customer(customers, original_customer_name)
+                
+                if customer_filtered:
+                    customer_filtered_name = customer_filtered.name
+                    address_records = get_address_display_list("Customer", customer_filtered_name)
+                    
+                    if address_records and isinstance(address_records, list):
+                        billing_address = next((address for address in address_records if address.get("address_type") == "Billing" and address.get("disabled") == 0), None)
+                        shipping_address = next((address for address in address_records if address.get("address_type") == "Shipping" and address.get("disabled") == 0), None)
+                        selected_address = billing_address or shipping_address or address_records[0]
+                    else:
+                        selected_address = None
+                        
+                    parse_doc["address_display"] = format_address_detail_to_print(selected_address)
+                else:
+                    parse_doc["address_display"] = ""   
 
     
     items_custom = []
