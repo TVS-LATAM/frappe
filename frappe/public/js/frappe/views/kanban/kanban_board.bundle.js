@@ -865,12 +865,8 @@ const ProjectStatusOptions = {
 				opts.queue_position = card.doc.queue_position || "";
 			}
 			self.$card = $(frappe.render_template("kanban_card", opts)).appendTo(wrapper);
-			if (card.border.message === same_status_2days) {
-				self.$card.find(".kanban-card.content").css("border", "1px solid pink");
-			} else if (card.border.message) {
-				self.$card.find(".kanban-card.content").css("border", "1px solid red");
-			} else if (card.conversation) {
-				self.$card.find(".kanban-card.content").css("border", "1px solid #FFA500");
+			if (card.conversation) {
+				self.$card.find(".kanban-card.content").css("border", "1px solid #0cc144");
 			}
 			if (!frappe.model.can_write(card.doctype)) {
 				// Undraggable card without 'write' access to reference doctype
@@ -960,7 +956,7 @@ const ProjectStatusOptions = {
 			`;
 
 			if (card.conversation) {
-				html += '<i class="fa-brands fa-whatsapp" style="width: 15px; color: #FFA500"></i>'
+				html += '<i class="fa-brands fa-whatsapp" style="width: 15px; color: #0cc144"></i>'
 			}
 
 			html += getPartsIcons()
@@ -1105,24 +1101,20 @@ const ProjectStatusOptions = {
 	function hasconversationUnread(card) {
 		return unread_conversations.find((el) => el.from === card.custom_customers_phone_number)
 	}
+
 	function set_border_color(card) {
-		let message = false
+		let message = false;
 		const nowDate = new Date();
 		const modifiedDate = new Date(card.status_modified);
-		const dayDifference = (nowDate - modifiedDate) / (1000 * 60 * 60 * 24);
-		const in_parking = card.status === 'In parking' && Number(card.queue_position) <= 5 && has_passed_two_days(card.parking_date);
-		const quotation = card.status === 'Quoted' && quotations_draft.find(quotation => quotation.parent == card.name)
-		let hass_passed_one_day_quotation = false
-		if (quotation) {
-			hass_passed_one_day_quotation = has_passed_one_day(quotation.modified)
-		}
+		const dayDifference = satuday_sunday_combined(modifiedDate, nowDate);
+		const in_parking = card.status === 'In parking' && Number(card.queue_position) <= 5 && satuday_sunday_combined(card.parking_date, nowDate) >= 2;;
+		const quotation = card.status === 'Quoted' && quotations_draft.find(quotation => quotation.parent == card.name);
+		const hass_passed_one_day_quotation = quotation && has_passed_one_day(quotation.modified);
 		if (in_parking) {
-			message = "2 days since moved to parking."
-		}
-		if (hass_passed_one_day_quotation) {
-			message = "The quote was sent over a day ago."
-		}
-		if (card.status_modified &&
+			message = "2 days since moved to parking.";
+		} else if (hass_passed_one_day_quotation) {
+			message = "The quote was sent over a day ago.";
+		} else if (card.status_modified &&
 			card.status !== 'In queue' &&
 			card.status !== 'In parking' &&
 			card.status !== 'Completed' &&
@@ -1130,17 +1122,30 @@ const ProjectStatusOptions = {
 			dayDifference > 2) {
 			message = same_status_2days;
 		}
-		return { message }
+		return { message };
 	}
 
-	function has_passed_two_days(dateString) {
-		if (!dateString) return false
-		const providedDate = new Date(dateString.split('T')[0]);
-		const currentDate = new Date();
-		currentDate.setHours(0, 0, 0, 0);
-		const difference = currentDate - providedDate;
-		const daysPassed = Math.floor(difference / (1000 * 60 * 60 * 24));
-		return daysPassed >= 2;
+	function satuday_sunday_combined(startDate, endDate) {
+		const isWeekend = date => date.getDay() % 6 === 0;
+		const isWeekday = date => date.getDay() >= 1 && date.getDay() <= 5;
+		let dayDifference = 0;
+		let currentDate = new Date(startDate);
+		let hasWeekend = false;
+		while (currentDate <= endDate) {
+			if (isWeekday(currentDate)) {
+				dayDifference++;
+			} else if (isWeekend(currentDate)) {
+				if (!hasWeekend) {
+					dayDifference++;
+					hasWeekend = true;
+				}
+			}
+			currentDate.setDate(currentDate.getDate() + 1);
+		}
+		if (hasWeekend) {
+			dayDifference--;
+		}
+		return dayDifference;
 	}
 
 	function has_passed_one_day(modifiedString) {
