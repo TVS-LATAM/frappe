@@ -14,25 +14,24 @@ default_user_setting = {'updated_on': 'Fri Aug 16 2024 12:10:40 GMT-0500', 'last
 
 
 def get_user_settings(doctype, for_update=False):
-    # user_settings = frappe.cache.hget("_user_settings", f"{doctype}::{frappe.session.user}")
-	user_settings = None
-	if user_settings is None:
-		user_settings = frappe.db.sql(
-			"""select data from `__UserSettings`
-			where `user`=%s and `doctype`=%s""",
-			(frappe.session.user, doctype),
-		)
-		user_settings = user_settings and user_settings[0][0] or "{}"
+    user_settings = frappe.cache.hget("_user_settings", f"{doctype}::{frappe.session.user}")
+    
+    if user_settings is None:
+        user_settings = frappe.db.sql(
+            """select data from `__UserSettings`
+            where `user`=%s and `doctype`=%s""",
+            (frappe.session.user, doctype),
+        )
+        user_settings = user_settings and user_settings[0][0] or "{}"
 
-		if not for_update:
-			update_user_settings(doctype, user_settings, True)
+        if not for_update:
+            update_user_settings(doctype, user_settings, True)
 
-	return user_settings or "{}"
+    return user_settings or "{}"
 
 
 def update_user_settings(doctype, user_settings, for_update=False):
 	"""update user settings in cache"""
-	# frappe.cache.delete_key("_user_settings")
 	if for_update:
 		current = json.loads(user_settings)
 	else:
@@ -69,10 +68,39 @@ def sync_user_settings():
 @frappe.whitelist()
 def save(doctype, user_settings):
 	user_settings = json.loads(user_settings or "{}")
-	# if(doctype == "Quotation" or doctype == "Sales Invoice"):
-	# 	user_settings = default_user_setting
+	print(user_settings)
 	update_user_settings(doctype, user_settings)
+	update_user_settings_in_db(doctype,user_settings)
 	return user_settings
+
+
+def update_user_settings_in_db(doctype, user_settings):
+    if doctype in ["Quotation", "Sales Invoice"] and doctype and user_settings and user_settings != {} and user_settings != "{}":
+        user_session = frappe.session.user
+
+        # Convertir user_settings a JSON si es un diccionario
+        if isinstance(user_settings, dict):
+            user_settings_json = json.dumps(user_settings)
+        else:
+            user_settings_json = user_settings
+
+        frappe.db.sql(
+            """
+            UPDATE `__UserSettings`
+            SET data = %(data)s
+            WHERE `user` = %(user_session)s
+            AND `doctype` = %(doctype)s
+            """,
+            {
+                "data": user_settings_json,
+                "user_session": user_session,
+                "doctype": doctype
+            }
+        )
+
+        frappe.cache.hset("_user_settings", f"{doctype}::{frappe.session.user}", user_settings_json)
+    else:
+        return user_settings
 
 
 @frappe.whitelist()
