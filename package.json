@@ -48,6 +48,7 @@
     "frappe-charts": "2.0.0-rc22",
     "frappe-datatable": "^1.17.2",
     "frappe-gantt": "^0.6.0",
+    "glider-js": "^1.7.9",
     "highlight.js": "^10.4.1",
     "html5-qrcode": "^2.3.8",
     "jquery": "3.7.0",
