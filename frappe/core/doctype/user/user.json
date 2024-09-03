@@ -167,7 +167,6 @@
    },
    {
     "bold": 1,
-    "description": "Test",
     "fieldname": "default_kanban",
     "fieldtype": "Link",
     "in_list_view": 1,
