@@ -272,7 +272,7 @@ frappe.views.ListViewSelect = class ListViewSelect {
 		}
 
 		const default_kanban = 
-			await frappe.db.get_doc('User', frappe.user.full_name()).then(user => user?.default_kanban)
+			await frappe.db.get_doc('User', frappe.user.name).then(user => user?.default_kanban)
 
 		if(default_kanban){
 			frappe.db.exists("Kanban Board", default_kanban).then((exists) => {
