@@ -16,7 +16,7 @@ from frappe.model.utils import is_virtual_doctype
 from frappe.utils import add_user_info, format_duration
 
 
-def getDoneStatusesFilter():
+def get_done_statuses_filters():
     return [
         ["Project", "status", "!=", "Completed"],
         ["Project", "status", "!=", "In pause"],
@@ -28,7 +28,7 @@ def getDoneStatusesFilter():
     ]
 
 
-def getDoneStatuses(statuses):
+def get_done_statuses(statuses):
     return [item[3] for item in statuses]
 
 
@@ -49,38 +49,37 @@ def is_user_allowed():
 @frappe.read_only()
 def get():
     args = get_form_params()
-    done_status_filters = getDoneStatusesFilter()
-    done_statuses = getDoneStatuses(done_status_filters)
+    done_status_filters = get_done_statuses_filters()
+    done_statuses = get_done_statuses(done_status_filters)
 
-    # Se cambia la validación para verificar si el usuario está en la lista de usuarios permitidos
-    if len(args["filters"]) == 0 and args["doctype"] == "Project" and args["page_length"] == "0":
+    if is_default_project_request(args):
         if not is_user_allowed():
-            done_status_filters.extend(
-                [["Project", "_assign", "like", f"%{frappe.session.data.user}%"]]
+            done_status_filters.append(
+                ["Project", "_assign", "like", f"%{frappe.session.data.user}%"]
             )
-        response = findData(filters=done_status_filters)
-
+        response = fetch_data_with_filters(done_status_filters)
+        
         for status in done_statuses:
-            filters = [["Project", "status", "=", status]]
+            status_filters = [["Project", "status", "=", status]]
             if not is_user_allowed():
-                filters.extend([["Project", "_assign", "like", f"%{frappe.session.data.user}%"]])
-            result = findData(filters=filters, page_length=10)
-            if len(result):
-                if len(response):
+                status_filters.append(["Project", "_assign", "like", f"%{frappe.session.data.user}%"])
+            result = fetch_data_with_filters(status_filters, page_length=10)
+            if result:
+                if response:
                     response["values"].extend(result["values"])
                 else:
                     response = result
+                    
         return response
     else:
         filters = []
         if not is_user_allowed() and args["doctype"] == "Project":
-            args["filters"].extend(
-                [["Project", "_assign", "like", f"%{frappe.session.data.user}%"]]
-            )
-        return findData(args, filters)
+            filters.append(["Project", "_assign", "like", f"%{frappe.session.data.user}%"])
+        
+        response = fetch_data_with_filters(filters=filters, args=args)
+        return response
 
-
-def findData(args=None, filters=[], page_length=0):
+def fetch_data_with_filters(filters=[], args=None, page_length=0):
     if args is None:
         args = get_form_params()
         args["filters"] = filters
@@ -92,6 +91,10 @@ def findData(args=None, filters=[], page_length=0):
     else:
         data = compress(execute(**args), args=args)
     return data
+
+
+def is_default_project_request(args):
+    return len(args["filters"]) == 0 and args["doctype"] == "Project" and args["page_length"] == "0"
 
 
 def get_projects_ordered():

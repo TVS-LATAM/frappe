@@ -4,10 +4,12 @@
 import json
 from time import sleep
 from urllib import request
+from frappe.desk.reportview import get_projects_ordered
 from frappe.integrations.utils import make_post_request
 import frappe
 from frappe import _
 from frappe.model.document import Document
+
 
 
 class KanbanBoard(Document):
@@ -125,10 +127,7 @@ def update_order(board_name, order):
     board = frappe.get_doc("Kanban Board", board_name)
     doctype = board.reference_doctype
     if doctype == "Project":
-        projects_ordered = frappe.db.sql(
-            """ select cast(queue_position as decimal) as queue_position, name from tabProject order by queue_position asc; """,
-            as_dict=True,
-        )
+        projects_ordered = get_projects_ordered()
         order_parse = order
         if isinstance(order, str):
             order_parse = json.loads(order)
