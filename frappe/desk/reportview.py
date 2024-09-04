@@ -95,7 +95,7 @@ def findData(args=None, filters=[], page_length=0):
 
 
 def get_projects_ordered():
-    return frappe.db.sql(
+    projects = frappe.db.sql(
         """
         SELECT
             cast(queue_position as decimal) as queue_position,
@@ -107,6 +107,7 @@ def get_projects_ordered():
     """,
         as_dict=True,
     )
+    return sorted(projects, key=lambda x: (x['queue_position']))
 
 
 @frappe.whitelist()
