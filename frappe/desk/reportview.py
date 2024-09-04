@@ -68,8 +68,7 @@ def get():
                 if response:
                     response["values"].extend(result["values"])
                 else:
-                    response = result
-                    
+                    response = result          
         return response
     else:
         filters = []
@@ -103,7 +102,7 @@ def get_projects_ordered():
         """
         SELECT
             COALESCE(cast(queue_position as decimal), 0) as queue_position,
-            name
+            name, status
         FROM
             `tabProject`
         ORDER BY
@@ -112,6 +111,7 @@ def get_projects_ordered():
         as_dict=True,
     )
     return sorted(projects, key=lambda x: (x['queue_position']))
+
 
 
 @frappe.whitelist()
