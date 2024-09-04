@@ -1107,7 +1107,7 @@ const ProjectStatusOptions = {
 		const modifiedDate = new Date(card.status_modified);
 		const dayDifference = satuday_sunday_combined(modifiedDate, nowDate);
 		const in_parking = card.status === 'In parking' && Number(card.queue_position) <= 5 && satuday_sunday_combined(card.parking_date, nowDate) >= 2;;
-		const quotation = card.status === 'Quoted' && quotations_draft.find(quotation => quotation.parent == card.name);
+		const quotation = card.status === 'Quoted' && quotations_draft.length && quotations_draft.find(quotation => quotation.parent == card.name);
 		const hass_passed_one_day_quotation = quotation && has_passed_one_day(quotation.modified);
 		if (in_parking) {
 			message = "2 days since moved to parking.";
