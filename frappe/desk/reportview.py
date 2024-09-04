@@ -79,6 +79,7 @@ def get():
         response = fetch_data_with_filters(filters=filters, args=args)
         return response
 
+
 def fetch_data_with_filters(filters=[], args=None, page_length=0):
     if args is None:
         args = get_form_params()
@@ -101,7 +102,7 @@ def get_projects_ordered():
     projects = frappe.db.sql(
         """
         SELECT
-            cast(queue_position as decimal) as queue_position,
+            COALESCE(cast(queue_position as decimal), 0) as queue_position,
             name
         FROM
             `tabProject`
