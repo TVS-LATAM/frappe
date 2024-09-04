@@ -14,7 +14,7 @@ from frappe.utils.telemetry import capture_doc
 
 @frappe.whitelist()
 def savedocs(doc, action):
-    createStatusChangedComment(json.loads(doc))
+    create_status_shanged_comment(json.loads(doc))
     """save / submit / update doclist"""
     doc = frappe.get_doc(json.loads(doc))
 
@@ -50,7 +50,7 @@ def savedocs(doc, action):
 
 
 @frappe.whitelist()
-def createStatusChangedComment(doc):
+def create_status_shanged_comment(doc):
     if doc["doctype"] == "Project":
         project_name = doc["name"]
         current_project = frappe.db.sql(

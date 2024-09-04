@@ -175,11 +175,20 @@ def update_order_for_single_card(
     to_col_order, to_col_idx = get_kanban_column_order_and_index(board, to_colname)
     user = board.modified_by
     if doctype == "Project":
-        createStatusChangedComment(from_colname, to_colname, docname, user)
+        create_status_shanged_comment(from_colname, to_colname, docname, user)
     if from_colname == to_colname:
         from_col_order = to_col_order
+        
     if len(from_col_order) > 0:
-        to_col_order.insert(new_index, from_col_order.pop(old_index))
+        try:
+            if old_index >= len(from_col_order):
+               old_index = from_col_order.index(docname)
+               
+            to_col_order.insert(new_index, from_col_order.pop(old_index))
+        except ValueError:
+            print("docname no se encuentra en from_col_order.")
+        except IndexError as e:
+            print(e)
 
     # save updated order
     board.columns[from_col_idx].order = frappe.as_json(from_col_order)
@@ -192,7 +201,7 @@ def update_order_for_single_card(
     return board
 
 
-def createStatusChangedComment(from_colname, to_colname, docname, user):
+def create_status_shanged_comment(from_colname, to_colname, docname, user):
     if from_colname != to_colname:
         comment = frappe.new_doc("Comment")
         comment.update(
