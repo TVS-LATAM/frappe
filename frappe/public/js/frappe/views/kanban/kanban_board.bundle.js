@@ -30,7 +30,6 @@ const ProjectStatusOptions = {
 	let same_status_2days = "2 days in the same status."
 	let quotations_draft = 0
 	let unread_conversations = []
-	getDraftQuotations()
 	var method_prefix = "frappe.desk.doctype.kanban_board.kanban_board.";
 
 	let columns_unwatcher = null;
@@ -1163,17 +1162,6 @@ const ProjectStatusOptions = {
 			filters: { seen: 0 },
 			fields: ["name", "from"],
 			ip: 1
-		})
-	}
-
-	async function getDraftQuotations() {
-		quotations_draft = await frappe.db.get_list("Project Quotation", {
-			filters: { status: "Draft" },
-			fields: ["name", "modified", "status", "parent"],
-			group_by: "parent",
-			order_by: "parent asc",
-			limit: 100,
-			ip: 1 // ignore permissions
 		})
 	}
 

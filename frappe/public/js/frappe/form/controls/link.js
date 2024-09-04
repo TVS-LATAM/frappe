@@ -159,13 +159,6 @@ frappe.ui.form.ControlLink = class ControlLink extends frappe.ui.form.ControlDat
 		linkStore.setFromName(doc_parent)
 		linkStore.setFromDoctype(doc_parenttype)
 		linkStore.setToDoctype(doc_doctype)
-		if(doc_parenttype === "Project" && ["Project Quotation", "Project Invoice"].includes(doc_doctype) ){
-			localStorage.setItem("autosave", JSON.stringify({from_name: doc_parent, from_doctype: doc_parenttype, to_doctype: doc_doctype, is_saved: false}))
-			localStorage.setItem("customer",  this.frm.doc.customer)
-			localStorage.setItem("mileage", this.frm.doc.client_mileage_state)
-			localStorage.setItem("plate", this.frm.doc.plate)
-			localStorage.setItem("description_title", this.frm.doc.description_title)
-		}
 
 		var doctype = this.get_options();
 		var me = this;
