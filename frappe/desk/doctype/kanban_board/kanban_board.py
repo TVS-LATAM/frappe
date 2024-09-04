@@ -113,7 +113,6 @@ def order_column_by_project_order(project_ordered, projects_to_order):
 
     ordered_projects = {}
     for column, project_list in projects_to_order.items():
-        print(column)
         sorted_project_list = sorted(
             project_list, key=lambda project: project_index_map.get(project, -1)
         )
