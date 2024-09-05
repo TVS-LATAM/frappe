@@ -4,7 +4,7 @@
 import json
 from time import sleep
 from urllib import request
-from frappe.desk.reportview import get_projects_ordered
+from frappe.desk.reportview import get_projects_ordered_by_queue_position_and_appointment_date
 from frappe.integrations.utils import make_post_request
 import frappe
 from frappe import _
@@ -127,7 +127,7 @@ def update_order(board_name, order):
     board = frappe.get_doc("Kanban Board", board_name)
     doctype = board.reference_doctype
     if doctype == "Project":
-        projects_ordered = get_projects_ordered()
+        projects_ordered = get_projects_ordered_by_queue_position_and_appointment_date()
         order_parse = order
         if isinstance(order, str):
             order_parse = json.loads(order)

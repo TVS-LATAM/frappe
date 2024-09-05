@@ -97,20 +97,24 @@ def is_default_project_request(args):
     return len(args["filters"]) == 0 and args["doctype"] == "Project" and args["page_length"] == "0"
 
 
-def get_projects_ordered():
+def get_projects_ordered_by_queue_position_and_appointment_date():
     projects = frappe.db.sql(
         """
         SELECT
             COALESCE(cast(queue_position as decimal), 0) as queue_position,
-            name, status
+            name, status,
+            DATE_FORMAT(appointment_date, '%Y-%m-%d') AS appointment_date
         FROM
             `tabProject`
         ORDER BY
             queue_position ASC;
-    """,
+        """,
         as_dict=True,
     )
-    return sorted(projects, key=lambda x: (x['queue_position']))
+    return sorted(projects, key=lambda x: (
+        x['queue_position'], 
+        x['appointment_date'] if x['appointment_date'] is not None else ''
+    ))
 
 
 
