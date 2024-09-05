@@ -3,6 +3,7 @@
 
 """build query for doclistview and return results"""
 
+from datetime import datetime
 import json
 
 import frappe
@@ -111,10 +112,22 @@ def get_projects_ordered_by_queue_position_and_appointment_date():
         """,
         as_dict=True,
     )
-    return sorted(projects, key=lambda x: (
-        x['queue_position'], 
-        x['appointment_date'] if x['appointment_date'] is not None else ''
-    ))
+    def sort_key(x):
+        queue_position = x['queue_position']
+        appointment_date = x['appointment_date']
+        if appointment_date:
+            try:
+                # Convertir la fecha string a objeto datetime
+                date_obj = datetime.strptime(appointment_date, '%Y-%m-%d')
+                return (queue_position, date_obj)
+            except ValueError:
+                # Si hay un error al convertir la fecha, usar una fecha lejana
+                return (queue_position, datetime(9999, 12, 31))
+        else:
+            # Si no hay fecha, usar una fecha lejana
+            return (queue_position, datetime(9999, 12, 31))
+
+    return sorted(projects, key=sort_key)
 
 
 
