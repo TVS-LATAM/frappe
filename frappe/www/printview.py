@@ -488,17 +488,24 @@ def format_address_detail_to_print(text):
         address_parts.append(address)
     if address2:
         address_parts.append(address2)
+
+    # Concatenar zip_code y city en una sola línea
+    zip_city = ""
     if zip_code:
-        address_parts.append(zip_code)
-    if city or country:
-        city_country = ""
-        if city:
-            city_country += city
-        if country:
-            if city:
-                city_country += ", "
-            city_country += country
-        address_parts.append(city_country)
+        zip_city += zip_code
+    if city:
+        if zip_code:
+            zip_city += ", "  # Agregar coma solo si zip_code ya existe
+        zip_city += city
+
+    if zip_city:  # Solo agregar si no está vacío
+        address_parts.append(zip_city)
+
+    # Agregar el país en una línea aparte si existe
+    if country:
+        address_parts.append(country)
+
+    # Unir las partes de la dirección con <br> para separar las líneas
     return "<br>".join(address_parts)
 
 
