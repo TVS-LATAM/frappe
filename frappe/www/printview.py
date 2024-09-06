@@ -488,15 +488,19 @@ def format_address_detail_to_print(text):
         address_parts.append(address)
     if address2:
         address_parts.append(address2)
-    if city and zip_code:
-        address_parts.append(f"{city} {zip_code}")
-    elif city:
-        address_parts.append(city)
-    elif zip_code:
+    if zip_code:
         address_parts.append(zip_code)
-    if country:
-        address_parts.append(country)
+    if city or country:
+        city_country = ""
+        if city:
+            city_country += city
+        if country:
+            if city:
+                city_country += ", "
+            city_country += country
+        address_parts.append(city_country)
     return "<br>".join(address_parts)
+
 
 def filter_customer(data, customer_name):
     # Normalize the customer_name input by stripping spaces and converting to lowercase
