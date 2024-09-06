@@ -201,60 +201,59 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 
 		const { auto_move_paused } = await frappe.db.get_doc('Queue Settings')
 		setTimeout(() => {
-			const exists = document.querySelector('div[id*="Kanban"] div.page-head.flex > div > div > div.flex.col.page-actions.justify-content-end #queue-freeze')
-			if (!exists) {
-				const container = document.querySelector('div.no-list-sidebar div.page-head.flex > div > div > div.flex.col.page-actions.justify-content-end')
+			const containers = document.querySelectorAll('div[id*="Kanban"] div.page-head.flex > div > div > div.flex.col.page-actions.justify-content-end')
+			for (const container of containers){
+				const exists = container.querySelector('#queue-freeze')
+				if (!exists) {
+					const custom_button_filter = document.createElement('button');
+					custom_button_filter.setAttribute('id', 'btn_collapse_filters_area');
+					custom_button_filter.classList.add('btn', 'btn-primary', 'btn-sm');
+					custom_button_filter.setAttribute('type', 'button');
+					custom_button_filter.setAttribute('data-toggle', 'collapse');
+					custom_button_filter.setAttribute('data-target', '#collapse_filters_area');
+					custom_button_filter.setAttribute('aria-expanded', 'false');
+					custom_button_filter.setAttribute('aria-controls', 'collapse_filters_area');
+					custom_button_filter.innerText = 'Filters';
+					container.append(custom_button_filter)
+					// const addProjectButton = container.querySelector('.primary-action');
+					// container.insertBefore(custom_button_filter, addProjectButton);
 
-
-				const custom_button_filter = document.createElement('button');
-				custom_button_filter.setAttribute('id', 'btn_collapse_filters_area');
-				custom_button_filter.classList.add('btn', 'btn-primary', 'btn-sm');
-				custom_button_filter.setAttribute('type', 'button');
-				custom_button_filter.setAttribute('data-toggle', 'collapse');
-				custom_button_filter.setAttribute('data-target', '#collapse_filters_area');
-				custom_button_filter.setAttribute('aria-expanded', 'false');
-				custom_button_filter.setAttribute('aria-controls', 'collapse_filters_area');
-				custom_button_filter.innerText = 'Filters';
-				container.append(custom_button_filter)
-				// const addProjectButton = container.querySelector('.primary-action');
-				// container.insertBefore(custom_button_filter, addProjectButton);
-
-				const input = document.createElement('input')
-				const label = document.createElement('label')
-				label.setAttribute('style', 'margin: 0')
-				label.setAttribute('id', 'queue-freeze')
-				label.innerText = 'freeze queue positions'
-				label.appendChild(input)
-				input.setAttribute('type', 'checkbox')
-				if (auto_move_paused) {
-					input.setAttribute('checked', 'checked')
+					const input = document.createElement('input')
+					const label = document.createElement('label')
+					label.setAttribute('style', 'margin: 0')
+					label.setAttribute('id', 'queue-freeze')
+					label.innerText = 'freeze queue positions'
+					label.appendChild(input)
+					input.setAttribute('type', 'checkbox')
+					if (auto_move_paused) {
+						input.setAttribute('checked', 'checked')
+					}
+					container.prepend(label);
+					input.addEventListener('change', (event) => {
+						frappe.db.set_value('Queue Settings', 'Queue Settings', 'auto_move_paused', auto_move_paused ? 0 : 1)
+							.then(() => {
+								const isChecked = event.target.checked;
+								if (isChecked) {
+									frappe.warn('Status updated successfully', 'Would you like to send a WhatsApp message to notify the clients in the queue?',
+										async () => {
+											const { aws_url } = await frappe.db.get_doc('Queue Settings')
+											return frappe.call({
+												method: "frappe.desk.doctype.kanban_board.kanban_board.call_freeze_queue_position_message",
+												args: { aws_url: aws_url },
+												callback: (result) => {
+													console.log("message queue position freeze sent: ", result);
+												},
+											});
+										},
+										'Yes',
+										true // Sets dialog as minimizable
+									)
+								} else {
+									frappe.msgprint(__('Status updated successfully'));
+								}
+							})
+					})
 				}
-				container.prepend(label);
-				input.addEventListener('change', (event) => {
-					frappe.db.set_value('Queue Settings', 'Queue Settings', 'auto_move_paused', auto_move_paused ? 0 : 1)
-						.then(() => {
-							const isChecked = event.target.checked;
-							if (isChecked) {
-								frappe.warn('Status updated successfully', 'Would you like to send a WhatsApp message to notify the clients in the queue?',
-									async () => {
-										const { aws_url } = await frappe.db.get_doc('Queue Settings')
-										return frappe.call({
-											method: "frappe.desk.doctype.kanban_board.kanban_board.call_freeze_queue_position_message",
-											args: { aws_url: aws_url },
-											callback: (result) => {
-												console.log("message queue position freeze sent: ", result);
-											},
-										});
-									},
-									'Yes',
-									true // Sets dialog as minimizable
-								)
-							} else {
-								frappe.msgprint(__('Status updated successfully'));
-							}
-						})
-				})
-
 			}
 		}, 1500);
 	}
