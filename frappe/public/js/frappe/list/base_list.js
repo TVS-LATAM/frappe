@@ -578,6 +578,7 @@ frappe.views.BaseList = class BaseList {
 class FilterArea {
 	constructor(list_view) {
 		this.list_view = list_view;
+    this.filters = list_view.filters
 		this.list_view.page.page_form.append(`<div class="standard-filter-section flex"></div>`);
 		const filter_area = this.list_view.hide_page_form
 			? this.list_view.page.custom_actions
@@ -590,7 +591,36 @@ class FilterArea {
 		this.$filter_list_wrapper = this.list_view.$filter_section;
 		this.trigger_refresh = true;
 		this.setup();
+		this.changeBorder();
 	}
+
+  changeBorder(){
+    const inputs = document.querySelectorAll('.input-with-feedback');
+ 
+    const defaultBorder = 'none';
+    const highlightBorder = '2px solid red';
+
+    inputs.forEach(input => {
+      const fieldName = input.getAttribute('data-fieldname');      
+      
+      // Get the filters that have values  
+      const hasValue = this.filters.some(([_, name]) => name === fieldName);
+
+        if(hasValue){
+          input.style.border = highlightBorder;
+        }
+        
+        input.addEventListener('input', (event) => {
+          const inputElement = event.target;
+            
+          if (inputElement.value.trim() !== '') {
+                inputElement.style.border = highlightBorder;
+          } else {
+                inputElement.style.border = defaultBorder;
+          }
+        });
+    });
+  }
 
 	setup() {
 		if (!this.list_view.hide_page_form) this.make_standard_filters();
@@ -863,6 +893,16 @@ class FilterArea {
 				</button>
 			</div>
 		</div>`).appendTo(this.$filter_list_wrapper);
+
+    const clearButton = document.querySelector(".filter-x-button")
+ 
+    clearButton.addEventListener('click', () => {
+      const inputs = document.querySelectorAll('.input-with-feedback');
+  
+      inputs.forEach(input => {
+        input.style.border = 'none';
+      })
+  });
 
 		this.filter_button = this.$filter_list_wrapper.find(".filter-button");
 		this.filter_x_button = this.$filter_list_wrapper.find(".filter-x-button");
