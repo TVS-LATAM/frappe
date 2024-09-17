@@ -688,10 +688,21 @@ const ProjectStatusOptions = {
 			}
 		}
 
+		// Función para filtrar y ordenar los proyectos
+		function filterAndSortProjects(cards) {
+			return cards
+			.filter(card => card.column !== 'In queue' && card.column !== 'In parking')
+			// Ordenar los resultados por doc.modified (de más viejo a más nuevo)
+			.sort((a, b) => new Date(a.status_modified) - new Date(b.status_modified));
+		}
+  
+  
+
 		function make_cards() {
 			self.$kanban_cards.empty();
 			var cards = store.state.cards;
 			filtered_cards = get_cards_for_column(cards, column);
+			console.log("filtered_cards ", filtered_cards)
 			var filtered_cards_names = filtered_cards.map((card) => card.name);
 
 			var order = column.order;
@@ -1093,7 +1104,8 @@ const ProjectStatusOptions = {
 			color: card.color || null,
 			doc: doc || card,
 			border: set_border_color(card),
-			conversation: hasconversationUnread(card)
+			conversation: hasconversationUnread(card),
+			status_modified: card.status_modified
 		};
 	}
 

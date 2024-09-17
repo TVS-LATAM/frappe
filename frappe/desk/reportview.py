@@ -104,7 +104,8 @@ def get_projects_ordered_by_queue_position_and_appointment_date():
         SELECT
             COALESCE(cast(queue_position as decimal), 0) as queue_position,
             name, status,
-            DATE_FORMAT(appointment_date, '%Y-%m-%d') AS appointment_date
+            DATE_FORMAT(appointment_date, '%Y-%m-%d') AS appointment_date,
+            DATE_FORMAT(status_modified, '%Y-%m-%d') AS status_modified
         FROM
             `tabProject`
         ORDER BY
@@ -112,22 +113,46 @@ def get_projects_ordered_by_queue_position_and_appointment_date():
         """,
         as_dict=True,
     )
+    
     def sort_key(x):
         queue_position = x['queue_position']
         appointment_date = x['appointment_date']
-        if appointment_date:
-            try:
-                # Convertir la fecha string a objeto datetime
-                date_obj = datetime.strptime(appointment_date, '%Y-%m-%d')
-                return (queue_position, date_obj)
-            except ValueError:
-                # Si hay un error al convertir la fecha, usar una fecha lejana
-                return (queue_position, datetime(9999, 12, 31))
-        else:
-            # Si no hay fecha, usar una fecha lejana
-            return (queue_position, datetime(9999, 12, 31))
+        status = x['status']
+        status_modified = x['status_modified']
 
+        # Caso 1: Si el status es "In queue" o "In parking", ordenar por queue_position y appointment_date
+        if status in ["In queue", "In parking"]:
+            if appointment_date:
+                try:
+                    # Convertir la fecha string a objeto datetime
+                    date_obj = datetime.strptime(appointment_date, '%Y-%m-%d')
+                    return (queue_position, date_obj)
+                except ValueError:
+                    # Si hay un error al convertir la fecha, usar una fecha lejana
+                    return (queue_position, datetime(9999, 12, 31))
+            else:
+                # Si no hay fecha, usar una fecha lejana
+                return (queue_position, datetime(9999, 12, 31))
+
+        # Caso 2: Si el status es diferente, ordenar solo por status_modified (de más viejo a más nuevo)
+        else:
+            # Convertir status_modified a datetime si es una cadena
+            if isinstance(status_modified, str):
+                try:
+                    status_modified_date = datetime.strptime(status_modified, '%Y-%m-%d')
+                except ValueError:
+                    status_modified_date = datetime(9999, 12, 31)
+            elif isinstance(status_modified, datetime):
+                status_modified_date = status_modified
+            else:
+                status_modified_date = datetime(9999, 12, 31)
+
+            # Usar queue_position como un valor arbitrario para asegurar la consistencia de la tupla
+            return (float('inf'), status_modified_date)
+
+    # Ordenar los proyectos con la clave de ordenamiento personalizada
     return sorted(projects, key=sort_key)
+
 
 
 
