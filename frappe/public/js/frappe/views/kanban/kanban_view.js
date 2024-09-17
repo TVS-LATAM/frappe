@@ -268,6 +268,25 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 		} else {
 			this.page.clear_indicator();
 		}
+
+    let filters = this.get_call_args().args.filters
+    const filters_fields = document.querySelectorAll('.input-with-feedback:not([type="checkbox"])');
+    const defaultBorder = 'none';
+    const highlightBorder = '2px solid red';
+
+    filters_fields.forEach(filter => {
+     filter.style.border = defaultBorder;
+
+     if(filters.length){
+       const fieldName = filter.getAttribute('data-fieldname');
+       const hasValue = filters.some(([_, name]) => name === fieldName);
+
+       if (hasValue) {
+         filter.style.border = highlightBorder;
+       }
+     }      
+   })
+
 	}
 
 	save_kanban_board_filters() {
