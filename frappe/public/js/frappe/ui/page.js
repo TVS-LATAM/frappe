@@ -143,7 +143,8 @@ frappe.ui.Page = class Page {
 		const url = window.location.pathname;
 		const pathToCheck = "/app/project/view/kanban/";
 		if(url.includes(pathToCheck)){
-			this.page_form = $('<div id="collapse_filters_area" class="page-form row hide collapse"></div>').prependTo(this.main)
+      const hasFilters = window.location.search
+			this.page_form = $(`<div id="collapse_filters_area" class="page-form row ${hasFilters ? "show" :"hide"} collapse"></div>`).prependTo(this.main)
 		}else{
 			this.page_form = $('<div class="page-form row hide"></div>').prependTo(this.main);
 		}
