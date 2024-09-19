@@ -115,8 +115,6 @@ def _get_user_ids(user_emails):
 
 
 def send_notification_email(doc):
-	if(doc.for_user in users_not_allowed_receive_emails): return
-
 	if doc.type == "Energy Point" and doc.email_content is None:
 		return
 
