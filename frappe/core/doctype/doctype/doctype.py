@@ -1905,3 +1905,19 @@ def get_row_size_utilization(doctype: str) -> float:
 		return flt(frappe.db.get_row_size(doctype) / frappe.db.MAX_ROW_SIZE_LIMIT * 100, 2)
 	except Exception:
 		return 0.0
+
+
+@frappe.whitelist()
+def get_calendar_filters(doctype, field):
+	field_options = frappe.db.sql(
+		"""
+		SELECT options, fieldname, parent
+		FROM tabDocField 
+		WHERE fieldname = %s
+		AND parent = %s;
+		""",
+		(field, doctype)
+	)
+
+	return field_options[0][0] if field_options else ''
+	
