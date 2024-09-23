@@ -15,6 +15,7 @@
   "is_custom",
   "desk_access",
   "two_factor_auth",
+  "show_in_calendar_filters",
   "navigation_settings_section",
   "search_bar",
   "notifications",
@@ -142,13 +143,19 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Is Custom"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_in_calendar_filters",
+   "fieldtype": "Check",
+   "label": "Show in Calendar Filters"
   }
  ],
  "icon": "fa fa-bookmark",
  "idx": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-05 18:33:27.694065",
+ "modified": "2024-09-23 17:42:45.156476",
  "modified_by": "Administrator",
  "module": "Core",
  "name": "Role",
