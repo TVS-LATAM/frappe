@@ -39,6 +39,7 @@ class Role(Document):
 		restrict_to_domain: DF.Link | None
 		role_name: DF.Data
 		search_bar: DF.Check
+		show_in_calendar_filters: DF.Check
 		timeline: DF.Check
 		two_factor_auth: DF.Check
 		view_switcher: DF.Check
