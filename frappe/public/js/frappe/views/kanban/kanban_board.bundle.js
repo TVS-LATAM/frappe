@@ -702,7 +702,7 @@ const ProjectStatusOptions = {
 			self.$kanban_cards.empty();
 			var cards = store.state.cards;
 			filtered_cards = get_cards_for_column(cards, column);
-			console.log("filtered_cards ", filtered_cards)
+		
 			var filtered_cards_names = filtered_cards.map((card) => card.name);
 
 			var order = column.order;

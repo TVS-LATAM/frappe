@@ -423,7 +423,7 @@ def get_html_and_style(
                     "item_name": value.get("item_name"),
                     "description": value.get("description"),
                     "brand": value.get("brand"),
-                    "base_amount": value.get("base_amount"),
+                    "base_amount": "{:.2f}".format(value.get("base_amount", 0)),
                     "tvs_pn": value.get("tvs_pn") or "",
                     "qty": convert_to_int(value.get("qty")),
                     "rate": value.get("rate")
@@ -440,6 +440,9 @@ def get_html_and_style(
         document.items_custom = parse_doc.get("items_custom")
 
 
+    document.base_total = "{:.2f}".format(parse_doc.get("base_total"))
+    document.base_total_taxes_and_charges = "{:.2f}".format(parse_doc.get("base_total_taxes_and_charges"))
+    document.grand_total = "{:.2f}".format(parse_doc.get("grand_total"))
     document.check_permission()
 
     print_format = get_print_format_doc(print_format, meta=document.meta)
