@@ -239,13 +239,13 @@ def download_pdf(
                     "item_name": value.get("item_name"),
                     "description": value.get("description"),
                     "brand": value.get("brand"),
-                    "base_amount": "{:.2f}".format(value.get("base_amount", 0)),
+                    "base_amount": value.get("base_amount", 0),
                     "tvs_pn": value.get("tvs_pn") or "",
                     "qty": convert_to_int(value.get("qty")),
-                    "rate": "{:.2f}".format(value.get("rate", 0)),
+                    "rate": value.get("rate", 0),
                     })
         doc.items_custom = items_custom
-    
+        
     doc.base_total = "{:.2f}".format(doc.get("base_total"))
     doc.base_total_taxes_and_charges = "{:.2f}".format(doc.get("base_total_taxes_and_charges"))
     doc.grand_total = "{:.2f}".format(doc.get("grand_total"))

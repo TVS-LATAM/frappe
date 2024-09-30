@@ -423,10 +423,10 @@ def get_html_and_style(
                     "item_name": value.get("item_name"),
                     "description": value.get("description"),
                     "brand": value.get("brand"),
-                    "base_amount": "{:.2f}".format(value.get("base_amount", 0)),
+                    "base_amount": value.get("base_amount", 0),
                     "tvs_pn": value.get("tvs_pn") or "",
                     "qty": convert_to_int(value.get("qty")),
-                    "rate":  "{:.2f}".format(value.get("rate", 0)),
+                    "rate":  value.get("rate", 0),
                     })
         parse_doc["items_custom"] = items_custom
 
