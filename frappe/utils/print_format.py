@@ -242,7 +242,7 @@ def download_pdf(
                     "base_amount": "{:.2f}".format(value.get("base_amount", 0)),
                     "tvs_pn": value.get("tvs_pn") or "",
                     "qty": convert_to_int(value.get("qty")),
-                    "rate": value.get("rate")
+                    "rate": "{:.2f}".format(value.get("rate", 0)),
                     })
         doc.items_custom = items_custom
     
