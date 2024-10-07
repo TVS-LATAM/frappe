@@ -155,6 +155,15 @@ def convert_to_int(value):
     except ValueError:
         # If the value cannot be converted to a float, raise an error
         raise ValueError("The input value is not a number or a numeric string")
+    
+def convert_to_float(value):
+    try:
+        # Convertir el valor a un float para manejar cadenas numéricas y números
+        float_value = float(value)
+        return float_value
+    except ValueError:
+        # Si el valor no se puede convertir a float, lanzar un error
+        raise ValueError("The input value is not a number or a numeric string")
 
 def get_print_format_doc(print_format_name, meta):
     """Returns print format document"""
@@ -425,7 +434,7 @@ def get_html_and_style(
                     "brand": value.get("brand"),
                     "base_amount": value.get("base_amount", 0),
                     "tvs_pn": value.get("tvs_pn") or "",
-                    "qty": convert_to_int(value.get("qty")),
+                    "qty": convert_to_float(value.get("qty")),
                     "rate":  value.get("rate", 0),
                     })
         parse_doc["items_custom"] = items_custom
