@@ -99,7 +99,7 @@ def get_context(context):
                     "brand": value.get("brand"),
                     "base_amount": value.get("base_amount"),
                     "tvs_pn": value.get("tvs_pn") or "",
-                    "qty": convert_to_int(value.get("qty")),
+                    "qty": convert_to_float(value.get("qty")),
                     "rate": value.get("rate")
                     })
         doc.items_custom = items_custom
