@@ -1,7 +1,6 @@
-<div class="kanban-column" data-column-value="{{title}}" id="{{column_title}}">
+<div class="kanban-column {{ size_class }}" data-column-value="{{title}}" id="{{column_title}}">
 	<div class="kanban-column-header">
 		<span class="kanban-column-title">
-			<span class="indicator-pill {{indicator}}"></span>
 			<span class="kanban-title ellipsis" title="{{title}}">{{ __(title) }}</span>
 		</span>
 		<div class="column-options dropdown pull-right">
@@ -15,11 +14,6 @@
 			</ul>
 		</div>
 	</div>
-	<!-- <div class="add-card">
-		<div class="ellipsis">
-			+ {{ __("Add {0}", [__(doctype)]) }}
-		</div>
-	</div> -->
 	<div class="kanban-card new-card-area">
 		<textarea name="title"></textarea>
 	</div>

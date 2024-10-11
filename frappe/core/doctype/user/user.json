@@ -14,6 +14,7 @@
   "whatsapp_notification",
   "email_notification_log",
   "default_kanban",
+  "size_kanban",
   "phone_notification",
   "section_break_3",
   "email",
@@ -176,6 +177,13 @@
     "oldfieldtype": "Select",
     "options": "Kanban Board",
     "permlevel": 1
+   },
+   {
+    "fieldname": "size_kanban",
+    "fieldtype": "Select",
+    "label": "Kanban Size",
+    "in_list_view": 1,
+    "options": "small\nmedium\nlarge"
    },
   {
    "depends_on": "enabled",

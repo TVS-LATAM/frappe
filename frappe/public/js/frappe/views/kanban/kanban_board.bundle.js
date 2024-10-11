@@ -26,14 +26,24 @@ const ProjectStatusOptions = {
 	SoftInternally: "Soft. internally"
 };
 
+const KanbanSize = {
+    small: "small",
+    medium: "medium",
+    large: "large"
+};
+
+
+
 (function () {
-	let same_status_2days = "2 days in the same status."
+	let kanban_size = KanbanSize.large
+	let same_status_2days = "2 days in the same status"
 	let quotations_draft = 0
 	let unread_conversations = []
 	var method_prefix = "frappe.desk.doctype.kanban_board.kanban_board.";
 
 	let columns_unwatcher = null;
 	let store;
+
 	const init_store = () => {
 		store = createStore({
 			state: {
@@ -374,6 +384,9 @@ const ProjectStatusOptions = {
 		}
 
 		async function init() {
+			const user_kanban_size = await get_kanban_size_by_user().then(r=> r)
+			kanban_size = user_kanban_size
+
 			await getUnreadConversations()
 			init_store();
 			store.dispatch("init", opts);
@@ -619,7 +632,7 @@ const ProjectStatusOptions = {
 			let _title = self.$kanban_column.find(".kanban-column-title")[0].outerText
 			_title = _title + " (" + get_total_cards() + ")"
 			store.state.kanban_columns.push(_title)
-			self.$kanban_column.find(".kanban-column-title").html("<span class=\"indicator-pill gray\"></span><span class=\"kanban-title ellipsis\" title=\"" + _title + "\">" + _title + "</span>");
+			self.$kanban_column.find(".kanban-column-title").html("<span class=\"kanban-title ellipsis\" title=\"" + _title + "\">" + _title + "</span>");
 		}
 
 		let loading = false
@@ -629,7 +642,8 @@ const ProjectStatusOptions = {
 					title: column.title,
 					doctype: store.state.doctype,
 					indicator: frappe.scrub(column.indicator, "-"),
-					column_title: "column_" + column.title.toLowerCase().replace(/[\s\-\/]+/g, '_')
+					column_title: "column_" + column.title.toLowerCase().replace(/[\s\-\/]+/g, '_'),
+					size_class: kanban_size
 				})
 			).appendTo(wrapper);
 			self.$kanban_cards = self.$kanban_column.find(".kanban-cards");
@@ -726,6 +740,7 @@ const ProjectStatusOptions = {
 		}
 
 		function setup_sortable() {
+			
 			// Block card dragging/record editing without 'write' access to reference doctype
 			if (!frappe.model.can_write(store.state.doctype)) return;
 			Sortable.create(self.$kanban_cards.get(0), {
@@ -735,10 +750,16 @@ const ProjectStatusOptions = {
 				handle: '.kanban-handler',
 				dataIdAttr: "data-name",
 				forceFallback: true,
-				onStart: function () {
+				onStart: function (e) {
+					console.log("start to render kanban ")
 					wrapper.find(".kanban-card.add-card").fadeOut(200, function () {
 						wrapper.find(".kanban-cards").height("100vh");
 					});
+					// Guardar la posición del scroll de la columna de origen antes de mover la tarjeta
+					const fromColumn = $(e.from).parents(".kanban-column");
+					scrollPos = window.screenX
+					console.log("position ", window.screenX)
+					
 				},
 				onEnd: function (e) {
 					wrapper.find(".kanban-card.add-card").fadeIn(100);
@@ -754,6 +775,7 @@ const ProjectStatusOptions = {
 						new_index: e.newIndex,
 					};
 					store.dispatch("update_order_for_single_card", args);
+					console.log("end to render kanban ")
 				},
 				onAdd: function () { },
 				filter: '.kanban-title-area a'
@@ -861,6 +883,7 @@ const ProjectStatusOptions = {
 				name: card.name,
 				title: frappe.utils.html2text(card.title),
 				disable_click: card._disable_click ? "disable-click" : "",
+				size_class: kanban_size,
 				creation: card.creation,
 				doc_content: get_doc_content(card),
 				client_description: frappe.utils.html2text(card.doc.client_description),
@@ -869,8 +892,9 @@ const ProjectStatusOptions = {
 				queue_position: 0,
 				appointment_date: card.doc.appointment_date
 					? card.doc.appointment_date.split('-').slice(1).reverse().join('-')
-					: ""
+					: "",
 			};
+			
 			if ([ProjectStatusOptions.InQueue, ProjectStatusOptions.InParking].includes(card.column)) {
 				opts.queue_position = card.doc.queue_position || "";
 			}
@@ -905,15 +929,19 @@ const ProjectStatusOptions = {
 				'Callback date': '<i class="fa-regular fa-calendar" style="color: black;"></i>',
 				'Calback time': '<i class="fa-regular fa-clock-o" style="color: black;"></i>',
 			};
+
 			if (card.column === ProjectStatusOptions.RequestCallback) {
 				render_fields.push(...['customer', 'callback_date', 'callback_time']);
 			}
+
 			if (card.column === ProjectStatusOptions.RemoteDiagnose) {
-				render_fields.push(...['remote_diagnostic_date', 'remote_diagnostic_time']);
+				render_fields.push(...['remote_diagnostic_date','remote_diagnostic_time']);
 			}
+
 			if (![ProjectStatusOptions.InQueue, ProjectStatusOptions.InParking].includes(card.column)) {
 				render_fields = render_fields.filter(field => field !== "queue_position");
 			}
+
 			for (let field_name of render_fields) {
 				let field =
 					frappe.meta.docfield_map[card.doctype]?.[field_name] ||
@@ -951,19 +979,26 @@ const ProjectStatusOptions = {
 		function render_card_meta() {
 			let html = `<div class="center_elements"> ${get_tags_html(card)}`;
 
-			if (card.comment_count > 0)
-				html += `<span class="list-comment-count small text-muted ">
-					${frappe.utils.icon("small-message")}
-					${card.comment_count}
-				</span>`;
+			if (kanban_size === "small") {
+				if (card.comment_count > 0) {
+					html += `<span class="list-comment-count small text-muted">
+								${frappe.utils.icon("small-message")}
+							</span>`;
+				}
+			} else {
+				html += `<span class="list-comment-count small text-muted">
+							${frappe.utils.icon("small-message")}
+							${card.comment_count}
+						</span>`;
+			}
+			
 
 
 			const $assignees_group = get_assignees_group();
 
-			html += `
-				<span class="kanban-assignments"></span>
-				${cur_list.get_like_html(card)}
-			`;
+			// if(kanban_size == KanbanSize.large){
+				html += `<span class="kanban-assignments"></span>${cur_list.get_like_html(card)}`;
+			// }
 
 			if (card.conversation) {
 				html += '<i class="fa-brands fa-whatsapp" style="width: 15px; color: #0cc144"></i>'
@@ -989,12 +1024,17 @@ const ProjectStatusOptions = {
 				self.$card.find(".kanban-card .kanban-title-area").prepend($div);
 			}
 			html += '</div>'
-			self.$card
+
+				self.$card
 				.find(".kanban-card-meta")
 				.empty()
-				.append(html)
-				.find(".kanban-assignments")
-				.append($assignees_group);
+				.append(html);
+
+			// if (kanban_size == KanbanSize.large) {
+				self.$card
+					.find(".kanban-assignments")
+					.append($assignees_group);
+			// }
 		}
 
 		function get_assignees_group() {
@@ -1105,7 +1145,7 @@ const ProjectStatusOptions = {
 			doc: doc || card,
 			border: set_border_color(card),
 			conversation: hasconversationUnread(card),
-			status_modified: card.status_modified
+			status_modified: card.status_modified,
 		};
 	}
 
@@ -1307,5 +1347,16 @@ const ProjectStatusOptions = {
 			callback(indicators);
 		});
 	}
+
+	async function get_kanban_size_by_user() {
+		const user = frappe.session.user;
+		const settings = await frappe
+			.call("frappe.desk.form.load.getdoc", { doctype: "User", name: user })
+			.then((r) => {
+			return r.docs && r.docs.length ? r.docs[0] : {size_kanban: KanbanSize.large}
+			});
+		return settings.size_kanban
+	}
+	
 })();
 

@@ -223,7 +223,7 @@
 						.kanban-card-meta {
 
 							.list-comment-count {
-								width: 30px;
+								width: 3rem;
 							}
 
 							.like-action:not(.liked) {
@@ -426,3 +426,65 @@ body[data-route*="Kanban"] {
 	justify-content: space-between;
 	align-items: center;
 }
+
+
+
+/* =====================  start kanban size styles ================ */
+
+.kanban .kanban-column {
+    transition: all 0.2s ease-in-out;
+    flex: 0 0 200px;
+    max-width: 200px;
+    border-radius: var(--border-radius);
+    padding: var(--padding-sm);
+}
+
+/* Styles for small size */
+.kanban-column.small {
+    flex: 0 0 140px;
+    max-width: 140px;
+}
+
+.kanban-card-wrapper.small .kanban-card-title,
+.kanban-card-wrapper.small .kanban-card-doc,
+.kanban-column.small .kanban-column-header .kanban-title {
+    font-size: 11px;
+}
+
+.kanban-card-wrapper.small .kanban-card-body {
+    padding: 4px;
+}
+
+/* Styles for medium size */
+.kanban-column.medium {
+    flex: 0 0 160px;
+    max-width: 160px;
+}
+
+.kanban-card-wrapper.medium .kanban-card-title,
+.kanban-card-wrapper.medium .kanban-card-doc,
+.kanban-column.medium .kanban-column-header .kanban-title {
+    font-size: 12px;
+}
+
+.kanban-card-wrapper.medium .kanban-card-body {
+    padding: 6px;
+}
+
+/* Styles for large size (updated) */
+.kanban-column.large {
+    flex: 0 0 200px;
+    max-width: 200px;
+}
+
+.kanban-card-wrapper.large .kanban-card-title,
+.kanban-card-wrapper.large .kanban-card-doc,
+.kanban-column.large .kanban-column-header .kanban-title {
+    font-size: 13px;
+}
+
+.kanban-card-wrapper.large .kanban-card-body {
+    padding: 8px;
+}
+
+/* =====================  end kanban size styles ================ */
