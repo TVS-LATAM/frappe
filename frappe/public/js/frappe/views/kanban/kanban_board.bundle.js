@@ -1355,7 +1355,7 @@ const KanbanSize = {
 			.then((r) => {
 			return r.docs && r.docs.length ? r.docs[0] : {size_kanban: KanbanSize.large}
 			});
-		return settings.size_kanban | KanbanSize.large
+		return settings.size_kanban ?? KanbanSize.large
 	}
 	
 })();
