@@ -159,7 +159,7 @@
 				.kanban-card {
 					@include flex(flex, space-between, null, column);
 					margin-top: var(--margin-xs);
-					min-height: 100px;
+					min-height: 80px;
 					@include card(
 						$padding: 0,
 						$background-color: var(--kanban-card-bg)
@@ -187,7 +187,7 @@
 						padding: var(--padding-sm);
 
 						.kanban-title-area {
-							margin-bottom: 12px;
+							// margin-bottom: 12px;
 							font-size: var(--text-md);
 							font-weight: 500;
 							background: whitesmoke;
