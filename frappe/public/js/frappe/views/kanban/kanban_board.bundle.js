@@ -1353,9 +1353,9 @@ const KanbanSize = {
 		const settings = await frappe
 			.call("frappe.desk.form.load.getdoc", { doctype: "User", name: user })
 			.then((r) => {
-			return r.docs && r.docs.length ? r.docs[0].size_kanban :  KanbanSize.large
+			return r.docs && r.docs.length ? r.docs[0] : {size_kanban: KanbanSize.large}
 			});
-		return settings | KanbanSize.large
+		return settings.size_kanban | KanbanSize.large
 	}
 	
 })();
