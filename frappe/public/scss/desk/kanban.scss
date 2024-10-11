@@ -158,8 +158,8 @@
 				}
 				.kanban-card {
 					@include flex(flex, space-between, null, column);
-					margin-top: var(--margin-xs);
-					min-height: 80px;
+					margin-top: 1px;
+					min-height: 50px;
 					@include card(
 						$padding: 0,
 						$background-color: var(--kanban-card-bg)
