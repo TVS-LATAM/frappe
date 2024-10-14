@@ -1314,3 +1314,8 @@ def get_enabled_users():
 		return enabled_users
 
 	return frappe.cache.get_value("enabled_users", _get_enabled_users)
+
+
+@frappe.whitelist()
+def update_kanban_size(value):
+    frappe.db.set_value("User", frappe.session.user, "size_kanban", value)
