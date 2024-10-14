@@ -331,7 +331,6 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 		} else if (board_name === this.kanban.board_name) {
 			this.kanban.update(this.data);
 		}
-
 	}
 
 

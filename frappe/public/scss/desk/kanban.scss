@@ -488,3 +488,29 @@ body[data-route*="Kanban"] {
 }
 
 /* =====================  end kanban size styles ================ */
+
+
+
+/* =====================  start kanban zoom ================ */
+.zoom-container {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 7vw;
+	background-color: transparent;
+	z-index: 100;
+	position: absolute;
+	right: 12vw;
+	bottom: 0;
+}
+
+.zoom-icon {
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.zoom-slider {
+	width: 100%;
+	margin: 0 10px;
+}
+/* =====================  end kanban zoom ================ */

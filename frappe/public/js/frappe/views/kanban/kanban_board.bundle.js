@@ -57,6 +57,7 @@ const KanbanSize = {
 				empty_state: true,
 				done_statuses: ['Completed', 'In pause', 'Cancelled', 'Quality check approved', 'No response from customer', 'Invoice paid', 'Awaiting pickup'],
 				kanban_columns: [],
+				kanban_size_range: null
 			},
 			mutations: {
 				update_state(state, obj) {
@@ -350,7 +351,12 @@ const KanbanSize = {
 						});
 						return countByColumn;
 					} else return ''
+				},
+				update_kanban_size_range: function(context, value){
+					console.log("action to set kanban size ", value)
+					context.state.kanban_size_range = value
 				}
+
 			},
 		});
 
@@ -384,29 +390,42 @@ const KanbanSize = {
 		}
 
 		async function init() {
-			const user_kanban_size = await get_kanban_size_by_user().then(r=> r)
-			kanban_size = user_kanban_size
-
 			await getUnreadConversations()
 			init_store();
+
+			const user_kanban_size = await get_kanban_size_by_user(store)
+			kanban_size = user_kanban_size
+			
+			
 			store.dispatch("init", opts);
 			columns_unwatcher && columns_unwatcher();
+			
 			store.watch((state) => {
 				return state.columns
 			}, make_columns);
 			prepare();
 			make_columns();
+			
 			store.watch((state) => {
 				return state.cur_list;
 			}, setup_restore_columns);
+			
 			columns_unwatcher = store.watch((state) => {
 				return state.columns;
 			}, setup_restore_columns);
+			
 			store.watch((state) => {
 				return state.empty_state;
 			}, show_empty_state);
+			
+			store.watch((state)=>{
+				console.log("watch enter ", state.kanban_size_range)
+				update_kanban_size(state.kanban_size_range)
+				return state.kanban_size_range
+			})
 
 			store.dispatch('update_order')
+			
 		}
 
 		function prepare() {
@@ -416,10 +435,10 @@ const KanbanSize = {
 				self.$kanban_board = $(frappe.render_template("kanban_board"));
 				self.$kanban_board.appendTo(self.wrapper);
 			}
-
 			self.$filter_area = self.cur_list.$page.find(".active-tag-filters");
 			bind_events();
 			setup_sortable();
+			setup_zoom_component()
 		}
 
 		async function make_columns() {
@@ -595,6 +614,11 @@ const KanbanSize = {
 				self.$kanban_board.find(".kanban-column").show();
 				self.$kanban_board.find(".kanban-empty-state").hide();
 			}
+		}
+
+		function update_kanban_size(size){
+			kanban_size = size
+			console.log("update_kanban_size ", kanban_size)
 		}
 
 		init();
@@ -1348,14 +1372,55 @@ const KanbanSize = {
 		});
 	}
 
-	async function get_kanban_size_by_user() {
+	async function get_kanban_size_by_user(store) {
 		const user = frappe.session.user;
 		const settings = await frappe
 			.call("frappe.desk.form.load.getdoc", { doctype: "User", name: user })
 			.then((r) => {
 			return r.docs && r.docs.length ? r.docs[0] : {size_kanban: KanbanSize.large}
 			});
-		return settings.size_kanban ?? KanbanSize.large
+		const value = settings.size_kanban ?? KanbanSize.large
+		store.dispatch("update_kanban_size_range", value)
+		return value
+	}
+
+	function setup_zoom_component(){
+		const zoomSlider = document.getElementById('zoom-slider');
+		const zoomIn = document.getElementById('zoom-icon-in');
+		const zoomOut = document.getElementById('zoom-icon-out');
+		const zoomLevels = {
+			1: 'small',
+			2: 'medium',
+			3: 'large'
+		};
+		setTimeout(()=>{},1000)
+		console.log("zoomSlider ",zoomSlider)
+		console.log("zoomIn ",zoomIn)
+		console.log("zoomOut ",zoomOut)
+		zoomIn.addEventListener('click', () => {
+			if (zoomSlider.value < 3) {
+				zoomSlider.value = parseInt(zoomSlider.value) + 1;
+				applyZoom(zoomSlider.value);
+			}
+		});
+
+		zoomOut.addEventListener('click', () => {
+			if (zoomSlider.value > 1) {
+				zoomSlider.value = parseInt(zoomSlider.value) - 1;
+				applyZoom(zoomSlider.value);
+			}
+		});
+
+		zoomSlider.addEventListener('input', () => {
+			applyZoom(zoomSlider.value);
+		});
+
+		function applyZoom(value) {
+			let zoomState = zoomLevels[value];
+			console.log("==============> apply zoom ", value, zoomState)
+			store.dispatch("update_kanban_size_range", zoomState)
+			return value
+		}
 	}
 	
 })();
