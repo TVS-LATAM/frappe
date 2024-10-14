@@ -487,13 +487,6 @@ body[data-route*="Kanban"] {
     padding: 8px;
 }
 
-/* Ocultar el zoom-container en dispositivos móviles */
-@media (max-width: 768px) {
-    .zoom-container {
-        display: none;
-    }
-}
-
 
 /* =====================  end kanban size styles ================ */
 
