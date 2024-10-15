@@ -1419,20 +1419,64 @@ const zoomLevels = {
 		});
 	}
 
+	function removeAllSizeClasses() {
+		// Remover las clases 'small', 'medium' y 'large' de las columnas
+		document.querySelectorAll('.kanban-column').forEach(el => {
+			el.classList.remove('small', 'medium', 'large');
+		});
+	
+		// Remover las clases 'small', 'medium' y 'large' de las tarjetas
+		document.querySelectorAll('.kanban-card-wrapper').forEach(el => {
+			el.classList.remove('small', 'medium', 'large');
+		});
+	}
+
+	function applyNewSizeClass(sizeClass) {
+		// Aplicar la nueva clase a las columnas
+		document.querySelectorAll('.kanban-column').forEach(el => {
+			el.classList.add(sizeClass);
+		});
+	
+		// Aplicar la nueva clase a las tarjetas
+		document.querySelectorAll('.kanban-card-wrapper').forEach(el => {
+			el.classList.add(sizeClass);
+			
+			// Mostrar u ocultar el elemento kanban-card-meta
+			const metaElement = el.querySelector('.kanban-card-meta');
+			if (metaElement) {
+				if (sizeClass === 'small') {
+					metaElement.style.display = 'none';  // Ocultar
+				} else {
+					metaElement.style.display = 'block'; // Mostrar
+				}
+			}
+		});
+	}
+	
+	
+
 	function applyZoom(value) {
 		let zoomState = zoomLevels[value];
-		store.dispatch("update_kanban_size_range", zoomState)
+		store.dispatch("update_kanban_size_range", zoomState);
+		
+		// Remover todas las clases de tamaño antes de aplicar la nueva clase
+		removeAllSizeClasses();
+		applyNewSizeClass(zoomState);
+	
+		// Actualizar la configuración en el backend sin recargar la página
 		frappe.call({
 			method: "frappe.core.doctype.user.user.update_kanban_size",
 			args: {
 				value: zoomState,
 			},
 			callback: function (r) {
-				window.location.reload()
+				console.log("Kanban size updated in the backend");
 			},
 		});
-		return zoomState
+		
+		return zoomState;
 	}
+	
 	
 })();
 

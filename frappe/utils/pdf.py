@@ -81,7 +81,8 @@ def get_pdf(html, options=None, output: PdfWriter | None = None):
     html = scrub_urls(html)
     html, options = prepare_options(html, options)
     options.update({"disable-javascript": "", "disable-local-file-access": ""})
-
+    options.update({"enable-external-links": "", "enable-internal-links": ""})  # Add this line
+    print(html)
     filedata = ""
     if Version(get_wkhtmltopdf_version()) > Version("0.12.3"):
         options.update({"disable-smart-shrinking": ""})
@@ -150,9 +151,9 @@ def prepare_options(html, options):
             "print-media-type": None,
             "background": None,
             "images": None,
-            # 'no-outline': None,
+            "enable-internal-links": True,
+            "enable-external-links": True,
             "encoding": "UTF-8",
-            # 'load-error-handling': 'ignore'
         }
     )
 
