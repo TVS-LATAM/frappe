@@ -1417,6 +1417,20 @@ const zoomLevels = {
 		zoomSlider.addEventListener('input', () => {
 			applyZoom(zoomSlider.value);
 		});
+
+		// Inicializa el estado correcto de las tarjetas
+		document.querySelectorAll('.kanban-card-wrapper').forEach(el => {
+			const sizeClass = Array.from(el.classList).find(cls => ['small', 'medium', 'large'].includes(cls));
+			
+			const metaElement = el.querySelector('.kanban-card-meta');
+			if (metaElement) {
+				if (sizeClass === 'small') {
+					metaElement.style.display = 'none';
+				} else {
+					metaElement.style.display = 'block';
+				}
+			}
+		});
 	}
 
 	function removeAllSizeClasses() {
