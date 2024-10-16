@@ -362,7 +362,6 @@ def call_freeze_queue_position_message(aws_url):
 
 @frappe.whitelist()
 def kanban_project_refresh(name:str):
-    frappe.publish_realtime("kanban_project_get_data", {"skip_user_session": True})
     sleep(2)
     frappe.publish_realtime("kanban_project_refresh")
     frappe.publish_realtime("list_update",{"doctype":"Project", "user":"support@tvsgroup.nl", "name": name})
