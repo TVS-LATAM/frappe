@@ -408,8 +408,8 @@ const zoomLevels = {
 			
 			prepare();
 
-			const user_kanban_size = await get_kanban_size_by_user(store)
-			kanban_size = user_kanban_size
+			// const user_kanban_size = await get_kanban_size_by_user(store)
+			// kanban_size = user_kanban_size
 			
 			make_columns();
 			
@@ -425,10 +425,10 @@ const zoomLevels = {
 				return state.empty_state;
 			}, show_empty_state);
 			
-			store.watch((state)=>{
-				update_kanban_size(state.kanban_size_range)
-				return state.kanban_size_range
-			})
+			// store.watch((state)=>{
+			// 	update_kanban_size(state.kanban_size_range)
+			// 	return state.kanban_size_range
+			// })
 
 			store.dispatch('update_order')
 			
@@ -444,7 +444,7 @@ const zoomLevels = {
 			self.$filter_area = self.cur_list.$page.find(".active-tag-filters");
 			bind_events();
 			setup_sortable();
-			setup_zoom_component()
+			// setup_zoom_component()
 		}
 
 		async function make_columns() {
@@ -1399,7 +1399,6 @@ const zoomLevels = {
 		const zoomIn = document.getElementById('zoom-icon-in');
 		const zoomOut = document.getElementById('zoom-icon-out');
 		
-		setTimeout(()=>{},1000)
 		zoomIn.addEventListener('click', () => {
 			if (zoomSlider.value < 3) {
 				zoomSlider.value = parseInt(zoomSlider.value) + 1;
