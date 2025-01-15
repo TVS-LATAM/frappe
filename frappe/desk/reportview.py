@@ -2,8 +2,6 @@
 # License: MIT. See LICENSE
 
 """build query for doclistview and return results"""
-
-from datetime import datetime
 import json
 
 import frappe
@@ -48,6 +46,12 @@ def get():
             filters.append(["Project", "_assign", "like", f"%{frappe.session.data.user}%"])
         
         response = fetch_data_with_filters(filters=filters, args=args)
+        ## order response by queue position
+        # if "values" in response:
+        #     response["values"] = sorted(
+        #         response["values"],
+        #         key=lambda x: x[response["keys"].index("queue_position")]
+        #     )
         return response
 
 
