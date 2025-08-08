@@ -869,7 +869,7 @@ const columnsByMechanic = {
 					}
 					
 					// Remote diagnose to Completed special case
-					if (validationPassed && args.from_colname === "Remote diagnose" && args.to_colname === "Completed") {
+					if (validationPassed && args.from_colname === "In diagnose" && args.to_colname === "After diagnosis") {
 						showSentMessageAfterRemoteDiagnoseDialog(args.name);
 					}
 					
