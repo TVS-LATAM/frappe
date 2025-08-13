@@ -395,7 +395,7 @@ def save_settings(board_name: str, settings: str) -> Document:
     doc = frappe.get_doc("Kanban Board", board_name)
 
     fields = settings["fields"]
-    if not isinstance(fields, str) or not isinstance(card_fields, str):
+    if not isinstance(fields, str):
         fields = json.dumps(fields)
 
     doc.fields = fields
@@ -415,7 +415,7 @@ def save_card_preview_settings(board_name: str, settings: str) -> Document:
 
 
     card_fields = settings["card_fields"]
-    if not isinstance(card_fields, str) or not isinstance(fields, str):
+    if not isinstance(card_fields, str):
         card_fields = json.dumps(card_fields)
 
     doc.card_fields = card_fields

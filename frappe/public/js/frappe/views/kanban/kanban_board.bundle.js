@@ -1299,53 +1299,35 @@ const columnsByMechanic = {
 
 				// Add card fields to details panel
 				// Use card_fields if available, otherwise fall back to regular fields
-				let fields = [];
+				let fields = cur_list.board.card_fields || cur_list.board.fields || [];
 				
-				// Parse card_fields if it's a string (JSON)
-				if (cur_list.board.card_fields) {
-					try {
-						fields = typeof cur_list.board.card_fields === 'string' ? 
-							JSON.parse(cur_list.board.card_fields) : cur_list.board.card_fields;
-					} catch (e) {
-						console.error('Error parsing card_fields:', e);
-					}
-				} else if (cur_list.board.fields) {
-					// Fall back to regular fields
-					try {
-						fields = typeof cur_list.board.fields === 'string' ? 
-							JSON.parse(cur_list.board.fields) : cur_list.board.fields;
-					} catch (e) {
-						console.error('Error parsing fields:', e);
-					}
-				}
-				
-				console.log('Parsed fields:', fields);
-				// fields.forEach(field_name => {
-				// 	const field = frappe.meta.docfield_map[card.doctype]?.[field_name] ||
-				// 		frappe.model.get_std_field(field_name);
+				fields.forEach(field_name => {
+					const field = frappe.meta.docfield_map[card.doctype]?.[field_name] ||
+						frappe.model.get_std_field(field_name);
 					
-				// 	if (!field) return;
+					if (!field) return;
 
-				// 	const value = frappe.format(card.doc[field_name], field);
-				// 	if (value) {
-				// 		html += `
-				// 			<div class="kanban-card-detail-item">
-				// 				<div class="kanban-card-detail-label">${__(field.label || field_name)}</div>
-				// 				<div class="kanban-card-detail-value">${value}</div>
-				// 			</div>
-				// 		`;
-				// 	}
-				// });
 
-				// // Add description if available
-				// if (card.doc.description) {
-				// 	html += `
-				// 		<div class="kanban-card-detail-item">
-				// 			<div class="kanban-card-detail-label">${__('Description')}</div>
-				// 			<div class="kanban-card-detail-value">${card.doc.description}</div>
-				// 		</div>
-				// 	`;
-				// }
+					const value = frappe.format(card.doc[field_name], field);
+					console.log("value => ", value)
+
+					html += `
+						<div class="kanban-card-detail-item">
+							<div class="kanban-card-detail-label">${__(field.label || field_name)}</div>
+							<div class="kanban-card-detail-value">${value || 'No value'}</div>
+						</div>
+					`;
+				});
+
+				// Add description if available
+				if (card.doc.description) {
+					html += `
+						<div class="kanban-card-detail-item">
+							<div class="kanban-card-detail-label">${__('Description')}</div>
+							<div class="kanban-card-detail-value">${card.doc.description}</div>
+						</div>
+					`;
+				}
 
 				return html;
 			}

@@ -139,6 +139,7 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 			this.board = board;
 			this.board.filters_array = JSON.parse(this.board.filters || "[]");
 			this.board.fields = JSON.parse(this.board.fields || "[]");
+			this.board.card_fields = JSON.parse(this.board.card_fields || "[]");
 			this.filters = this.board.filters_array;
 		});
 	}
