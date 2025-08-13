@@ -16,7 +16,8 @@
   "section_break_3",
   "columns",
   "filters",
-  "fields"
+  "fields",
+  "card_fields"
  ],
  "fields": [
   {
@@ -81,10 +82,17 @@
    "fieldtype": "Check",
    "label": "Show Labels",
    "read_only": 1
+  },
+  {
+   "fieldname": "card_fields",
+   "fieldtype": "Code",
+   "label": "Card Fields",
+   "options": "JSON"
   }
  ],
+ "grid_page_length": 50,
  "links": [],
- "modified": "2023-08-28 22:29:29.569670",
+ "modified": "2025-08-13 21:06:54.429347",
  "modified_by": "Administrator",
  "module": "Desk",
  "name": "Kanban Board",
@@ -117,6 +125,7 @@
   }
  ],
  "read_only": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

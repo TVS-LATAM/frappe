@@ -15,6 +15,7 @@ class ListViewSettings(Document):
 		from frappe.types import DF
 
 		allow_edit: DF.Check
+		card_fields: DF.Code | None
 		disable_auto_refresh: DF.Check
 		disable_automatic_recency_filters: DF.Check
 		disable_comment_count: DF.Check
