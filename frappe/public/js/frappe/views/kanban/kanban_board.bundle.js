@@ -981,9 +981,11 @@ const columnsByMechanic = {
 			if (!card) return;
 			make_dom();
 			render_card_meta();
+			bind_expand_button();
 		}
 
 		function make_dom() {
+			console.log({ card })
 			var opts = {
 				name: card.name,
 				title: frappe.utils.html2text(card.title),
@@ -1228,6 +1230,105 @@ const columnsByMechanic = {
 			}
 
 			return `<i class="fa fa-taxi  ${opts[status]?.class ?? ''}" style="color:${opts[status]?.color ?? '#d1d1d1'};" title="${status}"></i>`;
+		}
+
+		function bind_expand_button() {
+			self.$card = $(wrapper).find('.kanban-card-wrapper[data-name="' + encodeURIComponent(card.name) + '"]');
+			const $detailButton = self.$card.find('.kanban-card-detail-button');
+			const $touchButton = self.$card.find('.kanban-card-touch-button button');
+			const $detailsPanel = self.$card.find('.kanban-card-details');
+			const $detailsBody = self.$card.find('.kanban-card-details-body');
+
+			// Populate details panel content
+			$detailsBody.html(get_card_detail_html());
+
+			// Check if device is touch-enabled
+			const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+			// Show/hide touch button based on device type
+			if (isTouchDevice) {
+				$touchButton.parent().show();
+			} else {
+				$touchButton.parent().hide();
+			}
+
+			// Handle click on detail button (for desktop)
+			$detailButton.on('click', function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+				toggle_card_details();
+			});
+
+			// Handle click on touch button (for mobile/touch devices)
+			$touchButton.on('click', function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+				toggle_card_details();
+			});
+
+			// For non-touch devices, support hover
+			if (!isTouchDevice) {
+				self.$card.on('mouseenter', function() {
+					expand_card_details();
+				});
+
+				self.$card.on('mouseleave', function() {
+					collapse_card_details();
+				});
+			}
+
+			function toggle_card_details() {
+				if ($detailsPanel.hasClass('expanded')) {
+					collapse_card_details();
+				} else {
+					expand_card_details();
+				}
+			}
+
+			function expand_card_details() {
+				$detailsPanel.addClass('expanded');
+				self.$card.addClass('with-details');
+			}
+
+			function collapse_card_details() {
+				$detailsPanel.removeClass('expanded');
+				self.$card.removeClass('with-details');
+			}
+
+			function get_card_detail_html() {
+				let html = '';
+
+				// Add card fields to details panel
+				const fields = cur_list.board.fields || [];
+				fields.forEach(field_name => {
+					const field = frappe.meta.docfield_map[card.doctype]?.[field_name] ||
+						frappe.model.get_std_field(field_name);
+					
+					if (!field) return;
+
+					const value = frappe.format(card.doc[field_name], field);
+					if (value) {
+						html += `
+							<div class="kanban-card-detail-item">
+								<div class="kanban-card-detail-label">${__(field.label || field_name)}</div>
+								<div class="kanban-card-detail-value">${value}</div>
+							</div>
+						`;
+					}
+				});
+
+				// Add description if available
+				if (card.doc.description) {
+					html += `
+						<div class="kanban-card-detail-item">
+							<div class="kanban-card-detail-label">${__('Description')}</div>
+							<div class="kanban-card-detail-value">${card.doc.description}</div>
+						</div>
+					`;
+				}
+
+				return html;
+			}
 		}
 
 		function show_assign_to_dialog(e) {

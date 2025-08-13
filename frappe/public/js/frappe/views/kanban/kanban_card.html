@@ -1,37 +1,56 @@
 <div class="kanban-card-wrapper {{ size_class }} {{ disable_click }}" data-name="{{ encodeURIComponent(name) }}"
 	title="{{ client_description }}">
-	<div class="kanban-card content">
-		{% if(image_url) { %}
-		<div class="kanban-image">
-			<img src="{{ image_url }}" alt="{{ title }}">
-		</div>
-		{% } %}
-		<div class="kanban-card-body">
-			<div class="kanban-title-area">
-				<a href="{{ form_link }}">
-					<div class="kanban-card-title ellipsis" title="{{title}}">
-						{{ title }}
-					</div>
-				</a>
-				{% if(queue_position !== 0) { %}
-				<div class="circle-position {% if appointment_date %}has-appointment red{% endif %}">
-					<span class="circle-icon">
-						{% if appointment_date %}
-						<div class="hover-date" title="Appointment Date: Day-Month">{{ appointment_date }}</div>
-						{% else %}
-						<span style="user-select: none;" title="Queue Position">{{ queue_position }}</span>
-						{% endif %}
-					</span>
-				</div>
-				{% } %}
+	<div class="kanban-card-container">
+		<div class="kanban-card content">
+			{% if(image_url) { %}
+			<div class="kanban-image">
+				<img src="{{ image_url }}" alt="{{ title }}">
 			</div>
-			<div class="kanban-handler">
-				<div class="kanban-card-doc text-muted">
-					{{ doc_content }}
+			{% } %}
+			<div class="kanban-card-body">
+				<div class="kanban-title-area">
+					<a href="{{ form_link }}" class="kanban-card-title-link">
+						<div class="kanban-card-title ellipsis" title="{{title}}">
+							{{ title }}
+						</div>
+					</a>
+					<div class="kanban-card-detail-button" title="Show details">
+						<i class="fa fa-info-circle"></i>
+					</div>
+					{% if(queue_position !== 0) { %}
+					<div class="circle-position {% if appointment_date %}has-appointment red{% endif %}">
+						<span class="circle-icon">
+							{% if appointment_date %}
+							<div class="hover-date" title="Appointment Date: Day-Month">{{ appointment_date }}</div>
+							{% else %}
+							<span style="user-select: none;" title="Queue Position">{{ queue_position }}</span>
+							{% endif %}
+						</span>
+					</div>
+					{% } %}
 				</div>
-				{% if size_class != 'small' %}
-				<div class="kanban-card-meta"></div>
-				{% endif %}
+				<div class="kanban-handler">
+					<div class="kanban-card-doc text-muted">
+						{{ doc_content }}
+					</div>
+					{% if size_class != 'small' %}
+					<div class="kanban-card-meta"></div>
+					{% endif %}
+				</div>
+				<div class="kanban-card-touch-button">
+					<button class="btn btn-xs btn-default">Show Details</button>
+				</div>
+			</div>
+		</div>
+		<div class="kanban-card-details">
+			<div class="kanban-card-details-header">
+				<h4>{{ name }}</h4>
+				<a href="{{ form_link }}" class="btn btn-xs btn-default">
+					<i class="fa fa-external-link"></i> {{ __('Open') }}
+				</a>
+			</div>
+			<div class="kanban-card-details-body">
+				<!-- Details will be populated by JavaScript -->
 			</div>
 		</div>
 	</div>
@@ -44,14 +63,25 @@
 		display: flex;
 		align-items: center;
 		position: relative;
+		width: 100%;
 	}
 
 	.circle.red {
 		border-color: #d14343;
 	}
 
+	.kanban-card-title-link {
+		overflow: hidden;
+		max-width: 85%;
+		display: block;
+	}
+
 	.kanban-card-title {
 		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		width: 100%;
 	}
 
 	.circle-position {
@@ -88,7 +118,6 @@
 	}
 
 	@keyframes heartbeat {
-
 		0%,
 		100% {
 			transform: scale(1);
@@ -104,5 +133,89 @@
 		}
 	}
 
+	.kanban-card-container {
+		transition: all 0.3s ease;
+	}
 
+	.kanban-card-details {
+		position: absolute;
+		top: 0;
+		left: 97%;
+		width: 280px;
+		height: 100%;
+		background-color: #fff;
+		border-radius: 4px;
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+		transition: all 0.3s ease;
+		overflow: hidden;
+		opacity: 0;
+		z-index: 100000;
+		pointer-events: none;
+	}
+
+	.kanban-card-details.expanded {
+		opacity: 1;
+		transform: translateX(5px);
+		pointer-events: auto;
+	}
+
+	.with-details .kanban-card-details {
+		opacity: 1;
+		transform: translateX(5px);
+		pointer-events: auto;
+	}
+
+	.kanban-card-details-header {
+		padding: 10px;
+		border-bottom: 1px solid #e1e1e1;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.kanban-card-details-header h4 {
+		margin: 0;
+		font-size: 14px;
+		font-weight: bold;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: 160px;
+	}
+
+	.kanban-card-details-body {
+		padding: 10px;
+		overflow-y: auto;
+		max-height: calc(100% - 50px);
+	}
+
+	.kanban-card-detail-item {
+		margin-bottom: 10px;
+	}
+
+	.kanban-card-detail-label {
+		font-size: 12px;
+		color: #8d99a6;
+		margin-bottom: 2px;
+	}
+
+	.kanban-card-detail-value {
+		font-size: 13px;
+	}
+
+	.kanban-card-detail-button {
+		cursor: pointer;
+		color: #8d99a6;
+		margin-left: 5px;
+	}
+
+	.kanban-card-detail-button:hover {
+		color: #36414c;
+	}
+
+	.kanban-card-touch-button {
+		display: none;
+		text-align: center;
+		margin-top: 8px;
+	}
 </style>
