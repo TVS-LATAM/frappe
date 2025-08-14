@@ -1285,6 +1285,23 @@ const columnsByMechanic = {
 			}
 
 			function expand_card_details() {
+				// Check if the panel would overflow at the bottom of the viewport
+				const cardRect = self.$card[0].getBoundingClientRect();
+				const panelHeight = $detailsPanel.outerHeight() || 500; // Default to 500px if height is not available yet
+				const viewportHeight = window.innerHeight;
+				
+				// Reset to default position first
+				$detailsPanel.css('top', '0');
+				
+				// If the panel would overflow at the bottom, adjust its position
+				if (cardRect.top + panelHeight > viewportHeight) {
+					// Calculate how much to move the panel up to fit in the viewport
+					const overflow = cardRect.top + panelHeight - viewportHeight;
+					// Add a small buffer (20px) to avoid touching the bottom edge
+					const newTopPosition = Math.min(0, -overflow - 20);
+					$detailsPanel.css('top', newTopPosition + 'px');
+				}
+				
 				$detailsPanel.addClass('expanded');
 				self.$card.addClass('with-details');
 			}
