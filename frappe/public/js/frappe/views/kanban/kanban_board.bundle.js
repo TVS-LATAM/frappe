@@ -1307,9 +1307,25 @@ const columnsByMechanic = {
 					
 					if (!field) return;
 
+					if(field.fieldtype === "Text Editor" || field.fieldtype === "HTML Editor"){
+
+						function renderHtmlContent(content) {
+							const div = document.createElement('div');
+							div.innerHTML = content;
+							return div.innerHTML; 
+						}
+					
+						html += `
+								<div class="kanban-card-detail-item item-full">
+										<div class="kanban-card-detail-label">${__(field.label)}</div>
+										<div class="kanban-card-detail-value">${renderHtmlContent(card.doc[field_name])}</div>
+								</div>
+						`;
+
+						return html
+					}
 
 					const value = frappe.format(card.doc[field_name], field);
-					console.log("value => ", value)
 
 					html += `
 						<div class="kanban-card-detail-item">

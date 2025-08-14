@@ -222,8 +222,6 @@ export default class CardPreviewSettings {
 
 		const ignore_fieldtypes = [
 			"Attach Image",
-			"Text Editor",
-			"HTML Editor",
 			"Code",
 			"Color",
 			...frappe.model.no_value_type,
