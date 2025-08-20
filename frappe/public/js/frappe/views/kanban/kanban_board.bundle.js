@@ -157,7 +157,7 @@ const columnsByMechanic = {
 						.then(function () {
 							return update_kanban_board(board.name, col.title, action);
 						})
-						.then(
+						.then(	
 							function (r) {
 								var cols = r.message;
 								context.commit("update_state", {
@@ -866,10 +866,9 @@ const columnsByMechanic = {
 								console.log(`Validation failed for Completed: ${error || 'User cancelled'}`);
 								validationPassed = false;
 							});
-					}
-					
+					}					
 					// Remote diagnose to Completed special case
-					if (validationPassed && args.from_colname === "Remote diagnose" && args.to_colname === "Completed") {
+					if (validationPassed && args.from_colname === "In diagnosis" && args.to_colname === "After diagnosis") {
 						showSentMessageAfterRemoteDiagnoseDialog(args.name);
 					}
 					
