@@ -25,6 +25,7 @@ class KanbanBoard(Document):
         from frappe.desk.doctype.kanban_board_column.kanban_board_column import KanbanBoardColumn
         from frappe.types import DF
 
+        card_fields: DF.Code | None
         columns: DF.Table[KanbanBoardColumn]
         field_name: DF.Literal[None]
         fields: DF.Code | None
@@ -33,7 +34,6 @@ class KanbanBoard(Document):
         private: DF.Check
         reference_doctype: DF.Link
         show_labels: DF.Check
-
     # end: auto-generated types
     def validate(self):
         self.validate_column_name()
@@ -403,6 +403,26 @@ def save_settings(board_name: str, settings: str) -> Document:
     doc.save()
 
     resp = doc.as_dict()
+    resp["fields"] = frappe.parse_json(resp["fields"])
+    resp["card_fields"] = frappe.parse_json(resp["card_fields"])
+
+    return resp
+
+@frappe.whitelist()
+def save_card_preview_settings(board_name: str, settings: str) -> Document:
+    settings = json.loads(settings)
+    doc = frappe.get_doc("Kanban Board", board_name)
+
+
+    card_fields = settings["card_fields"]
+    if not isinstance(card_fields, str):
+        card_fields = json.dumps(card_fields)
+
+    doc.card_fields = card_fields
+    doc.save()
+
+    resp = doc.as_dict()
+    resp["card_fields"] = frappe.parse_json(resp["card_fields"])
     resp["fields"] = frappe.parse_json(resp["fields"])
 
     return resp

@@ -1,4 +1,5 @@
 import KanbanSettings from "./kanban_settings";
+import CardPreviewSettings from "./card_preview_settings";
 
 frappe.provide("frappe.views");
 
@@ -99,6 +100,15 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 					this.save_kanban_board_filters();
 				},
 			});
+
+			// Add Card Preview Settings menu item
+			this.menu_items.push({
+				label: __("Card Preview Settings"),
+				action: () => {
+					console.log("action card preview")
+					this.show_card_preview_settings();
+				},
+			});
 		}
 
 		if (this.board_perms.delete) {
@@ -129,6 +139,7 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 			this.board = board;
 			this.board.filters_array = JSON.parse(this.board.filters || "[]");
 			this.board.fields = JSON.parse(this.board.fields || "[]");
+			this.board.card_fields = JSON.parse(this.board.card_fields || "[]");
 			this.filters = this.board.filters_array;
 		});
 	}
@@ -343,6 +354,17 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 	show_kanban_settings() {
 		frappe.model.with_doctype(this.doctype, () => {
 			new KanbanSettings({
+				kanbanview: this,
+				doctype: this.doctype,
+				settings: this.board,
+				meta: frappe.get_meta(this.doctype),
+			});
+		});
+	}
+
+	show_card_preview_settings() {
+		frappe.model.with_doctype(this.doctype, () => {
+			new CardPreviewSettings({
 				kanbanview: this,
 				doctype: this.doctype,
 				settings: this.board,
