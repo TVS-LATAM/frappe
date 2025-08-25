@@ -528,7 +528,7 @@ body[data-route*="Kanban"] {
 	background-color: #fff;
 	border-radius: 8px;
 	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-	transition: all 0.3s ease;
+	// transition: all 0.3s ease;
 	overflow: auto;
 	opacity: 0;
 	z-index: 100000;
@@ -539,13 +539,13 @@ body[data-route*="Kanban"] {
 
 .kanban-card-details.expanded {
 	opacity: 1;
-	transform: translateX(5px);
+	// transform: translateX(5px);
 	pointer-events: auto;
 }
 
 .with-details .kanban-card-details {
 	opacity: 1;
-	transform: translateX(5px);
+	// transform: translateX(5px);
 	pointer-events: auto;
 }
 

@@ -56,6 +56,7 @@ const columnsByMechanic = {
 
 	let columns_unwatcher = null;
 	let store;
+	let mouseLeaveTimeout;
 
 	const init_store = () => {
 		store = createStore({
@@ -1236,8 +1237,6 @@ const columnsByMechanic = {
 			const $touchButton = self.$card.find('.kanban-card-touch-button button');
 			const $detailsPanel = $(document).find('.kanban-card-details');
 
-			let mouseLeaveTimeout;
-
 
 			// Check if device is touch-enabled
 			const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -1266,30 +1265,28 @@ const columnsByMechanic = {
 			// For non-touch devices, support hover
 			if (!isTouchDevice) {
 				self.$card.on('mouseenter', function(e) {
-					console.log("mousenter card =>", card.name)
-					expand_card_details(e);
+					clearTimeout(mouseLeaveTimeout)
+					expand_card_details();
 				});
 
 				self.$card.on('mouseleave', function() {
-					console.log("mouseleave card=>", card.name)
-					// mouseLeaveTimeout =  setTimeout(() => {
+					mouseLeaveTimeout = setTimeout(() => {
 						collapse_card_details();
-					// }, 1000)
+					})
 				});
 
-				// $detailsPanel.on('mouseenter', function(e) {
-				// 	console.log("mouseenter details")
+				self.$card.on("mousedown", function(){
+					clearTimeout(mouseLeaveTimeout)
+					collapse_card_details()
+				})
 
-				// 	clearTimeout(mouseLeaveTimeout)
-				// })
+				$detailsPanel.on('mouseenter', function(e) {
+					clearTimeout(mouseLeaveTimeout)
+				})
 
-				// $detailsPanel.on('mouseleave', function() {
-				// 	console.log("mouse leave details")
-
-				// 	// mouseLeaveTimeout =  setTimeout(() => {
-				// 		collapse_card_details();
-				// 	// }, 100)
-				// });
+				$detailsPanel.on('mouseleave', function() {
+					collapse_card_details();
+				});
 			}
 
 			// function toggle_card_details() {
@@ -1300,29 +1297,31 @@ const columnsByMechanic = {
 			// 	}
 			// }
 
-			function expand_card_details(e) {
+			function expand_card_details() {
 				const $detailsBody = $(document).find('.kanban-card-details-body');
 				const $detailsTitle = $(document).find('.kanban-card-details-title');
+				const $kanban = document.querySelector('.kanban')
 
 				$detailsBody.html(get_card_detail_html());
 				$detailsTitle.html(card.name)
 
 				const cardRect = self.$card[0].getBoundingClientRect();
+				const kanban = $kanban.getBoundingClientRect()
 				const panelHeight = $detailsPanel.outerHeight() || 500;
 				const panelWidth = $detailsPanel.outerWidth() || 500;
 				const viewportHeight = window.innerHeight;
 				const viewportWidth = window.innerWidth;
 
 				if (cardRect.right + panelWidth + 5 > viewportWidth) {
-					$detailsPanel.css('left', (cardRect.left - panelWidth - 5) + 'px');
+					$detailsPanel.css('left', (cardRect.left - panelWidth) + 'px');
 				} else {
-					$detailsPanel.css('left', (cardRect.right + 5) + 'px');
+					$detailsPanel.css('left', (cardRect.right) + 'px');
 				}
 
-				if (cardRect.top + panelHeight + 10 > viewportHeight) {
-					$detailsPanel.css('bottom', '10px');
+				if (cardRect.top + panelHeight > viewportHeight) {
+					$detailsPanel.css('top', cardRect.bottom - panelHeight - kanban.top + 'px');
 				} else {
-					$detailsPanel.css('top', cardRect.top - cardRect.height + 'px');
+					$detailsPanel.css('top', cardRect.top - kanban.top + 'px');
 				}
 
 				
