@@ -71,9 +71,13 @@ const columnsByMechanic = {
 				empty_state: true,
 				done_statuses: ['Completed', 'In pause', 'Cancelled', 'Quality check approved', 'No response from customer', 'Invoice paid', 'Awaiting pickup'],
 				kanban_columns: [],
-				kanban_size_range: null
+				kanban_size_range: null,
+				is_dragging: false
 			},
 			mutations: {
+				set_dragging(state, is_dragging) {
+					state.is_dragging = is_dragging;
+				},
 				update_state(state, obj) {
 					Object.assign(state, obj);
 				},
@@ -804,6 +808,7 @@ const columnsByMechanic = {
 				dataIdAttr: "data-name",
 				forceFallback: true,
 				onStart: function (e) {
+					store.commit('set_dragging', true);
 					wrapper.find(".kanban-card.add-card").fadeOut(200, function () {
 						wrapper.find(".kanban-cards").height("100vh");
 					});
@@ -812,6 +817,7 @@ const columnsByMechanic = {
 					scrollPos = window.screenX
 				},
 				onEnd: async function (e) {
+					store.commit('set_dragging', false);
 					wrapper.find(".kanban-card.add-card").fadeIn(100);
 					wrapper.find(".kanban-cards").height("auto");
 					
@@ -1264,18 +1270,21 @@ const columnsByMechanic = {
 
 			// For non-touch devices, support hover
 			if (!isTouchDevice) {
-				self.$card.on('mouseenter', function(e) {
-					clearTimeout(mouseLeaveTimeout)
-					expand_card_details();
-				});
+					self.$card.on('mouseenter', function(e) {
+						if (store.state.is_dragging) return;
+						clearTimeout(mouseLeaveTimeout)
+						expand_card_details();
+					});
 
-				self.$card.on('mouseleave', function() {
-					mouseLeaveTimeout = setTimeout(() => {
-						collapse_card_details();
-					})
-				});
+					self.$card.on('mouseleave', function() {
+						if (store.state.is_dragging) return;
+						mouseLeaveTimeout = setTimeout(() => {
+							collapse_card_details();
+						})
+					});
 
 				self.$card.on("mousedown", function(){
+					if (store.state.is_dragging) return;
 					clearTimeout(mouseLeaveTimeout)
 					collapse_card_details()
 				})
