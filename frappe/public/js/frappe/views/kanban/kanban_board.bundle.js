@@ -1302,20 +1302,28 @@ const columnsByMechanic = {
 
 			function expand_card_details(e) {
 				const $detailsBody = $(document).find('.kanban-card-details-body');
+				const $detailsTitle = $(document).find('.kanban-card-details-title');
 
 				$detailsBody.html(get_card_detail_html());
+				$detailsTitle.html(card.name)
 
 				const cardRect = self.$card[0].getBoundingClientRect();
 				const panelHeight = $detailsPanel.outerHeight() || 500;
-        const viewportHeight = window.innerHeight;
+				const panelWidth = $detailsPanel.outerWidth() || 500;
+				const viewportHeight = window.innerHeight;
+				const viewportWidth = window.innerWidth;
 
-        $detailsPanel.css('left', (cardRect.right + 5) + 'px')
-        
-        if (cardRect.top + panelHeight + 10 > viewportHeight) {
-				$detailsPanel.css('bottom', 0 + 'px')
-        }else{
-         $detailsPanel.css('top', cardRect.top - cardRect.height + 'px')
-        }
+				if (cardRect.right + panelWidth + 5 > viewportWidth) {
+					$detailsPanel.css('left', (cardRect.left - panelWidth - 5) + 'px');
+				} else {
+					$detailsPanel.css('left', (cardRect.right + 5) + 'px');
+				}
+
+				if (cardRect.top + panelHeight + 10 > viewportHeight) {
+					$detailsPanel.css('bottom', '10px');
+				} else {
+					$detailsPanel.css('top', cardRect.top - cardRect.height + 'px');
+				}
 
 				
 				$detailsPanel.addClass('expanded');
