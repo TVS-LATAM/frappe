@@ -1234,11 +1234,10 @@ const columnsByMechanic = {
 			self.$card = $(wrapper).find('.kanban-card-wrapper[data-name="' + encodeURIComponent(card.name) + '"]');
 			const $detailButton = self.$card.find('.kanban-card-detail-button');
 			const $touchButton = self.$card.find('.kanban-card-touch-button button');
-			const $detailsPanel = self.$card.find('.kanban-card-details');
-			const $detailsBody = self.$card.find('.kanban-card-details-body');
+			const $detailsPanel = $(document).find('.kanban-card-details');
 
-			// Populate details panel content
-			$detailsBody.html(get_card_detail_html());
+			let mouseLeaveTimeout;
+
 
 			// Check if device is touch-enabled
 			const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -1254,58 +1253,77 @@ const columnsByMechanic = {
 			$detailButton.on('click', function(e) {
 				e.preventDefault();
 				e.stopPropagation();
-				toggle_card_details();
+				// toggle_card_details();
 			});
 
 			// Handle click on touch button (for mobile/touch devices)
 			$touchButton.on('click', function(e) {
 				e.preventDefault();
 				e.stopPropagation();
-				toggle_card_details();
+				// toggle_card_details();
 			});
 
 			// For non-touch devices, support hover
 			if (!isTouchDevice) {
-				self.$card.on('mouseenter', function() {
-					expand_card_details();
+				self.$card.on('mouseenter', function(e) {
+					console.log("mousenter card =>", card.name)
+					expand_card_details(e);
 				});
 
 				self.$card.on('mouseleave', function() {
-					collapse_card_details();
+					console.log("mouseleave card=>", card.name)
+					// mouseLeaveTimeout =  setTimeout(() => {
+						collapse_card_details();
+					// }, 1000)
 				});
+
+				// $detailsPanel.on('mouseenter', function(e) {
+				// 	console.log("mouseenter details")
+
+				// 	clearTimeout(mouseLeaveTimeout)
+				// })
+
+				// $detailsPanel.on('mouseleave', function() {
+				// 	console.log("mouse leave details")
+
+				// 	// mouseLeaveTimeout =  setTimeout(() => {
+				// 		collapse_card_details();
+				// 	// }, 100)
+				// });
 			}
 
-			function toggle_card_details() {
-				if ($detailsPanel.hasClass('expanded')) {
-					collapse_card_details();
-				} else {
-					expand_card_details();
-				}
-			}
+			// function toggle_card_details() {
+			// 	if ($detailsPanel.hasClass('expanded')) {
+			// 		collapse_card_details();
+			// 	} else {
+			// 		expand_card_details();
+			// 	}
+			// }
 
-			function expand_card_details() {
-				// Check if the panel would overflow at the bottom of the viewport
+			function expand_card_details(e) {
+				const $detailsBody = $(document).find('.kanban-card-details-body');
+
+				$detailsBody.html(get_card_detail_html());
+
 				const cardRect = self.$card[0].getBoundingClientRect();
-				const panelHeight = $detailsPanel.outerHeight() || 500; // Default to 500px if height is not available yet
-				const viewportHeight = window.innerHeight;
-				
-				// Reset to default position first
-				$detailsPanel.css('top', '0');
-				
-				// If the panel would overflow at the bottom, adjust its position
-				if (cardRect.top + panelHeight > viewportHeight) {
-					// Calculate how much to move the panel up to fit in the viewport
-					const overflow = cardRect.top + panelHeight - viewportHeight;
-					// Add a small buffer (20px) to avoid touching the bottom edge
-					const newTopPosition = Math.min(0, -overflow - 20);
-					$detailsPanel.css('top', newTopPosition + 'px');
-				}
+				const panelHeight = $detailsPanel.outerHeight() || 500;
+        const viewportHeight = window.innerHeight;
+
+        $detailsPanel.css('left', (cardRect.right + 5) + 'px')
+        
+        if (cardRect.top + panelHeight + 10 > viewportHeight) {
+				$detailsPanel.css('bottom', 0 + 'px')
+        }else{
+         $detailsPanel.css('top', cardRect.top - cardRect.height + 'px')
+        }
+
 				
 				$detailsPanel.addClass('expanded');
 				self.$card.addClass('with-details');
 			}
 
 			function collapse_card_details() {
+				const $detailsPanel = $(document).find('.kanban-card-details');
 				$detailsPanel.removeClass('expanded');
 				self.$card.removeClass('with-details');
 			}
