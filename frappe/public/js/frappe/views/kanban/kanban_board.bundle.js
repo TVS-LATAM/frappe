@@ -1258,14 +1258,14 @@ const columnsByMechanic = {
 			$detailButton.on('click', function(e) {
 				e.preventDefault();
 				e.stopPropagation();
-				// toggle_card_details();
+				toggle_card_details();
 			});
 
 			// Handle click on touch button (for mobile/touch devices)
 			$touchButton.on('click', function(e) {
 				e.preventDefault();
 				e.stopPropagation();
-				// toggle_card_details();
+				toggle_card_details();
 			});
 
 			// For non-touch devices, support hover
@@ -1298,13 +1298,13 @@ const columnsByMechanic = {
 				});
 			}
 
-			// function toggle_card_details() {
-			// 	if ($detailsPanel.hasClass('expanded')) {
-			// 		collapse_card_details();
-			// 	} else {
-			// 		expand_card_details();
-			// 	}
-			// }
+			function toggle_card_details() {
+				if ($detailsPanel.hasClass('expanded')) {
+					collapse_card_details();
+				} else {
+					expand_card_details();
+				}
+			}
 
 			function expand_card_details() {
 				const $detailsBody = $(document).find('.kanban-card-details-body');
