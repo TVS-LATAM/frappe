@@ -15,4 +15,15 @@
 		<input type="range" id="zoom-slider" class="zoom-slider" min="1" max="3" value="2" step="1">
 		<span class="zoom-icon" id="zoom-icon-in">+</span>
 	</div>
+	<div id="kanban-card-details" class="kanban-card-details">
+		<div class="kanban-card-details-header">
+			<h4 class="kanban-card-details-title"></h4>
+			<a href="" class="btn btn-xs btn-default">
+				<i class="fa fa-external-link"></i> {{ __('Open') }}
+			</a>
+		</div>
+		<div id="kanban-card-details-body" class="kanban-card-details-body">
+			<!-- Details will be populated by JavaScript -->
+		</div>
+	</div>
 </div>

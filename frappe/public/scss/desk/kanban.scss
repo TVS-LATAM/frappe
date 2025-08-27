@@ -144,7 +144,7 @@
 			max-height: calc(100vh - 165px);
 			margin: -5px;
 			padding: 5px;
-			// overflow-y: scroll;
+			overflow-y: scroll;
 			-ms-overflow-style: none; /* IE and Edge */
 			scrollbar-width: none; /* Firefox */
 
@@ -518,5 +518,115 @@ body[data-route*="Kanban"] {
 .zoom-slider {
 	width: 100%;
 	margin: 0 10px;
+}
+
+.kanban-card-details {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 500px;
+	background-color: #fff;
+	border-radius: 8px;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+	// transition: all 0.3s ease;
+	overflow: auto;
+	opacity: 0;
+	z-index: 100000;
+	pointer-events: none;
+	max-height: 500px;
+	border: 1px solid #e1e9f0;
+}
+
+.kanban-card-details.expanded {
+	opacity: 1;
+	// transform: translateX(5px);
+	pointer-events: auto;
+}
+
+.with-details .kanban-card-details {
+	opacity: 1;
+	// transform: translateX(5px);
+	pointer-events: auto;
+}
+
+.kanban-card-details-header {
+	padding: 15px;
+	border-bottom: 1px solid #e1e9f0;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background-color: #f8fafc;
+}
+
+.kanban-card-details-header h4 {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 300px;
+	color: #1f272e;
+}
+
+.kanban-card-details-body {
+	padding: 16px;
+	overflow-y: auto;
+	max-height: calc(100% - 60px);
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 12px;
+	align-items: start;
+	background-color: #ffffff;
+}
+
+.kanban-card-detail-item {
+	margin-bottom: 10px;
+	min-width: 0;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+	padding: 12px;
+	border-radius: 6px;
+	background-color: #f8fafc;
+	border: 1px solid #eef1f5;
+	transition: all 0.2s ease;
+}
+
+.kanban-card-detail-item.item-full{
+	grid-column: 1 / -1; /* Span all columns */
+	width: 100%;
+	
+}
+
+.kanban-card-detail-item:hover {
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+	border-color: #e1e9f0;
+}
+
+.kanban-card-detail-label {
+	font-size: 13px;
+	color: #6c7680;
+	margin-bottom: 6px;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.kanban-card-detail-value {
+	font-size: 14px;
+	background: #ffffff;
+	color: #1f272e;
+	padding: 8px 10px;
+	border-radius: 4px;
+	border: 1px solid #eef1f5;
+	line-height: 1.5;
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.kanban-card-touch-button {
+	display: none;
+	text-align: center;
+	margin-top: 8px;
 }
 /* =====================  end kanban zoom ================ */

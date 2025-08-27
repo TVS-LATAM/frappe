@@ -56,6 +56,7 @@ const columnsByMechanic = {
 
 	let columns_unwatcher = null;
 	let store;
+	let mouseLeaveTimeout;
 
 	const init_store = () => {
 		store = createStore({
@@ -70,9 +71,13 @@ const columnsByMechanic = {
 				empty_state: true,
 				done_statuses: ['Completed', 'In pause', 'Cancelled', 'Quality check approved', 'No response from customer', 'Invoice paid', 'Awaiting pickup'],
 				kanban_columns: [],
-				kanban_size_range: null
+				kanban_size_range: null,
+				is_dragging: false
 			},
 			mutations: {
+				set_dragging(state, is_dragging) {
+					state.is_dragging = is_dragging;
+				},
 				update_state(state, obj) {
 					Object.assign(state, obj);
 				},
@@ -803,6 +808,7 @@ const columnsByMechanic = {
 				dataIdAttr: "data-name",
 				forceFallback: true,
 				onStart: function (e) {
+					store.commit('set_dragging', true);
 					wrapper.find(".kanban-card.add-card").fadeOut(200, function () {
 						wrapper.find(".kanban-cards").height("100vh");
 					});
@@ -811,6 +817,7 @@ const columnsByMechanic = {
 					scrollPos = window.screenX
 				},
 				onEnd: async function (e) {
+					store.commit('set_dragging', false);
 					wrapper.find(".kanban-card.add-card").fadeIn(100);
 					wrapper.find(".kanban-cards").height("auto");
 					
@@ -1234,11 +1241,8 @@ const columnsByMechanic = {
 			self.$card = $(wrapper).find('.kanban-card-wrapper[data-name="' + encodeURIComponent(card.name) + '"]');
 			const $detailButton = self.$card.find('.kanban-card-detail-button');
 			const $touchButton = self.$card.find('.kanban-card-touch-button button');
-			const $detailsPanel = self.$card.find('.kanban-card-details');
-			const $detailsBody = self.$card.find('.kanban-card-details-body');
+			const $detailsPanel = $(document).find('.kanban-card-details');
 
-			// Populate details panel content
-			$detailsBody.html(get_card_detail_html());
 
 			// Check if device is touch-enabled
 			const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -1266,11 +1270,30 @@ const columnsByMechanic = {
 
 			// For non-touch devices, support hover
 			if (!isTouchDevice) {
-				self.$card.on('mouseenter', function() {
-					expand_card_details();
-				});
+					self.$card.on('mouseenter', function(e) {
+						if (store.state.is_dragging) return;
+						clearTimeout(mouseLeaveTimeout)
+						expand_card_details();
+					});
 
-				self.$card.on('mouseleave', function() {
+					self.$card.on('mouseleave', function() {
+						if (store.state.is_dragging) return;
+						mouseLeaveTimeout = setTimeout(() => {
+							collapse_card_details();
+						})
+					});
+
+				self.$card.on("mousedown", function(){
+					if (store.state.is_dragging) return;
+					clearTimeout(mouseLeaveTimeout)
+					collapse_card_details()
+				})
+
+				$detailsPanel.on('mouseenter', function(e) {
+					clearTimeout(mouseLeaveTimeout)
+				})
+
+				$detailsPanel.on('mouseleave', function() {
 					collapse_card_details();
 				});
 			}
@@ -1284,28 +1307,39 @@ const columnsByMechanic = {
 			}
 
 			function expand_card_details() {
-				// Check if the panel would overflow at the bottom of the viewport
+				const $detailsBody = $(document).find('.kanban-card-details-body');
+				const $detailsTitle = $(document).find('.kanban-card-details-title');
+				const $kanban = document.querySelector('.kanban')
+
+				$detailsBody.html(get_card_detail_html());
+				$detailsTitle.html(card.name)
+
 				const cardRect = self.$card[0].getBoundingClientRect();
-				const panelHeight = $detailsPanel.outerHeight() || 500; // Default to 500px if height is not available yet
+				const kanban = $kanban.getBoundingClientRect()
+				const panelHeight = $detailsPanel.outerHeight() || 500;
+				const panelWidth = $detailsPanel.outerWidth() || 500;
 				const viewportHeight = window.innerHeight;
-				
-				// Reset to default position first
-				$detailsPanel.css('top', '0');
-				
-				// If the panel would overflow at the bottom, adjust its position
-				if (cardRect.top + panelHeight > viewportHeight) {
-					// Calculate how much to move the panel up to fit in the viewport
-					const overflow = cardRect.top + panelHeight - viewportHeight;
-					// Add a small buffer (20px) to avoid touching the bottom edge
-					const newTopPosition = Math.min(0, -overflow - 20);
-					$detailsPanel.css('top', newTopPosition + 'px');
+				const viewportWidth = window.innerWidth;
+
+				if (cardRect.right + panelWidth + 5 > viewportWidth) {
+					$detailsPanel.css('left', (cardRect.left - panelWidth) + 'px');
+				} else {
+					$detailsPanel.css('left', (cardRect.right) + 'px');
 				}
+
+				if (cardRect.top + panelHeight > viewportHeight) {
+					$detailsPanel.css('top', cardRect.bottom - panelHeight - kanban.top + 'px');
+				} else {
+					$detailsPanel.css('top', cardRect.top - kanban.top + 'px');
+				}
+
 				
 				$detailsPanel.addClass('expanded');
 				self.$card.addClass('with-details');
 			}
 
 			function collapse_card_details() {
+				const $detailsPanel = $(document).find('.kanban-card-details');
 				$detailsPanel.removeClass('expanded');
 				self.$card.removeClass('with-details');
 			}
