@@ -1022,6 +1022,7 @@ const columnsByMechanic = {
 
 		function get_doc_content(card) {
 			let fields = [];
+ 			if(!cur_list.board.fields?.length) return;
 			let render_fields = [...cur_list.board.fields];
 			const icon_map = {
 				'Project': 'rectangle_history_circle_user.svg',
@@ -1309,7 +1310,7 @@ const columnsByMechanic = {
 			function expand_card_details() {
 				const $detailsBody = $(document).find('.kanban-card-details-body');
 				const $detailsTitle = $(document).find('.kanban-card-details-title');
-				const $kanban = document.querySelector('.kanban')
+				const $kanban = self.$card.closest('.kanban')[0] || document.querySelector('.kanban');
 
 				$detailsBody.html(get_card_detail_html());
 				$detailsTitle.html(card.name)
@@ -1324,7 +1325,7 @@ const columnsByMechanic = {
 				if (cardRect.right + panelWidth + 5 > viewportWidth) {
 					$detailsPanel.css('left', (cardRect.left - panelWidth) + 'px');
 				} else {
-					$detailsPanel.css('left', (cardRect.right) + 'px');
+					$detailsPanel.css('left', (cardRect.right - kanban.left + 20) + 'px');
 				}
 
 				if (cardRect.top + panelHeight > viewportHeight) {

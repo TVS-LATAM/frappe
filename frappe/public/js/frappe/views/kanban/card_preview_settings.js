@@ -52,6 +52,10 @@ export default class CardPreviewSettings {
 					settings: this.dialog.get_values(),
 				},
 				callback: (r) => {
+					console.log("responsee => ", r.message)
+					if(r.message?.card_fields && !Array.isArray(r.message?.card_fields)){
+						r.message.card_fields = JSON.parse(r.message.card_fields)
+					}
 					this.kanbanview.board = r.message;
 					this.kanbanview.render();
 					this.dialog.hide();
