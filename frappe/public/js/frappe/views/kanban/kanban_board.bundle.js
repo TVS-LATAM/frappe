@@ -1310,10 +1310,12 @@ const columnsByMechanic = {
 			function expand_card_details() {
 				const $detailsBody = $(document).find('.kanban-card-details-body');
 				const $detailsTitle = $(document).find('.kanban-card-details-title');
+				const $detailsLink = $(document).find('.kanban-card-details-link')
 				const $kanban = self.$card.closest('.kanban')[0] || document.querySelector('.kanban');
 
 				$detailsBody.html(get_card_detail_html());
 				$detailsTitle.html(card.name)
+				$detailsLink.attr('href', `/app/project/${card.name}`)
 
 				const cardRect = self.$card[0].getBoundingClientRect();
 				const kanban = $kanban.getBoundingClientRect()
