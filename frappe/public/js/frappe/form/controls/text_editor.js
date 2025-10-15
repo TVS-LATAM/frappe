@@ -260,31 +260,12 @@ frappe.ui.form.ControlTextEditor = class ControlTextEditor extends frappe.ui.for
 
 	get_toolbar_options() {
 		return [
-			[{ header: [1, 2, 3, false] }],
 			[{ size: font_sizes }],
-			["bold", "italic", "underline", "strike", "clean"],
+			["bold"],
 			[{ color: [] }, { background: [] }],
-			["blockquote", "code-block"],
 			// Adding Direction tool to give the user the ability to change text direction.
-			[{ direction: "rtl" }],
 			["link", "image"],
-			[{ list: "ordered" }, { list: "bullet" }, { list: "check" }],
-			[{ align: [] }],
-			[{ indent: "-1" }, { indent: "+1" }],
-			[
-				{
-					table: [
-						"insert-table",
-						"insert-row-above",
-						"insert-row-below",
-						"insert-column-right",
-						"insert-column-left",
-						"delete-row",
-						"delete-column",
-						"delete-table",
-					],
-				},
-			],
+			[{ list: "bullet" }],
 		];
 	}
 
