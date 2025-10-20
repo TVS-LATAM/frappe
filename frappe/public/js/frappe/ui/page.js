@@ -920,8 +920,13 @@ frappe.ui.Page = class Page {
 		}
 
 		// hidden fields dont have $input
-		if (!f.$input) f.make_input();
-
+		if (!f.$input) {
+			f.make_input();
+			// If still no $input after make_input, create a basic input
+			if (!f.$input) {
+				f.$input = $('<input type="text" class="input-with-feedback form-control">').prependTo(f.input_area);
+			}
+		}
 		f.$input.attr("placeholder", __(df.label, null, df.parent));
 
 		if (df.fieldtype === "Check") {
