@@ -878,6 +878,10 @@ const columnsByMechanic = {
 					if (validationPassed && args.from_colname === "In diagnosis" && args.to_colname === "After diagnosis") {
 						showSentMessageAfterRemoteDiagnoseDialog(args.name);
 					}
+
+					if (validationPassed && args.to_colname === "In parking") {
+						deactivateChatbot(args.name);
+					}
 					
 					// Only update if all validations passed
 					if (validationPassed) {
@@ -1955,5 +1959,13 @@ const columnsByMechanic = {
 			indicator: "red",
 			alert: true
 		});
+	}
+
+	async function deactivateChatbot(project_name) {
+		const project = await frappe.db.get_doc('Project', project_name)
+		const conversations = await frappe.db.get_list('Conversation', { filters: { from: project.custom_customers_phone_number } })
+		for(const conversation of conversations){
+			await frappe.db.set_value('Conversation', conversation.name ,{ 'is_auto_reply': 0, 'seen': 0})
+		}
 	}
 })();
