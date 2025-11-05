@@ -13,6 +13,7 @@
   "column_break_4",
   "private",
   "show_labels",
+  "show_preview_card",
   "section_break_3",
   "columns",
   "filters",
@@ -88,11 +89,17 @@
    "fieldtype": "Code",
    "label": "Card Fields",
    "options": "JSON"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_preview_card",
+   "fieldtype": "Check",
+   "label": "show preview card"
   }
  ],
  "grid_page_length": 50,
  "links": [],
- "modified": "2025-08-13 21:06:54.429347",
+ "modified": "2025-11-05 21:11:04.909828",
  "modified_by": "Administrator",
  "module": "Desk",
  "name": "Kanban Board",

@@ -214,7 +214,7 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 		const isSeniorMechanic = await erpnext.utils.isSeniorMechanic(this.frm);
 
 		if(!isWorkshopViewer && !isMechanic && !isJuniorMechanic && !isSeniorMechanic){
-			insertFreezeQueuePosition()
+			insertFreezeQueuePosition(this)
 		}else{
 			const sidebar = $(".layout-side-section");
 			if (sidebar.is(':visible')) {
@@ -508,7 +508,7 @@ frappe.views.KanbanView.show_kanban_dialog = function (doctype) {
 	}
 };
 
-async function insertFreezeQueuePosition() {
+async function insertFreezeQueuePosition(context) {
 	const { auto_move_paused } = await frappe.db.get_doc('Queue Settings')
 	setTimeout(() => {
 		const containers = document.querySelectorAll('div[id*="Kanban"] div.page-head.flex > div > div > div.flex.col.page-actions.justify-content-end')
@@ -530,11 +530,12 @@ async function insertFreezeQueuePosition() {
 
 				const input = document.createElement('input')
 				const label = document.createElement('label')
-				label.setAttribute('style', 'margin: 0')
+				label.setAttribute('style', 'margin-right: 10px;display:flex;align-items:center;gap:10px;')
 				label.setAttribute('id', 'queue-freeze')
 				label.innerText = 'freeze queue positions'
 				label.appendChild(input)
 				input.setAttribute('type', 'checkbox')
+				input.setAttribute('style', 'cursor:pointer')
 				if (auto_move_paused) {
 					input.setAttribute('checked', 'checked')
 				}
@@ -548,6 +549,23 @@ async function insertFreezeQueuePosition() {
 
 					frappe.db.set_value('Queue Settings', 'Queue Settings', 'auto_move_paused', Number(isChecked))
 					frappe.msgprint(__('Status updated successfully'));
+				})
+				const preview_label = document.createElement('label')
+				const preview_input = document.createElement('input')
+				preview_label.setAttribute('style', 'margin-right: 10px;display:flex;align-items:center;gap:10px')
+				preview_label.setAttribute('id', 'show-preview')
+				preview_label.innerText = 'show preview'
+				preview_label.appendChild(preview_input)
+				preview_input.setAttribute('type', 'checkbox')
+				preview_input.setAttribute('style', 'cursor:pointer')
+				if (context.board.show_preview_card) {
+					preview_input.setAttribute('checked', 'checked')
+				}
+				container.prepend(preview_label);
+				preview_input.addEventListener('change', (event) => {
+					const isChecked = event.target.checked;
+					frappe.db.set_value('Kanban Board', context.board.name, 'show_preview_card', Number(isChecked))
+					window.location.reload()
 				})
 			}
 		}

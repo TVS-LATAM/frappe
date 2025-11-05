@@ -34,6 +34,7 @@ class KanbanBoard(Document):
         private: DF.Check
         reference_doctype: DF.Link
         show_labels: DF.Check
+        show_preview_card: DF.Check
     # end: auto-generated types
     def validate(self):
         self.validate_column_name()
