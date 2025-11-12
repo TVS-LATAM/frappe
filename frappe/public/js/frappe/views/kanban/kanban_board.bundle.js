@@ -991,7 +991,9 @@ const columnsByMechanic = {
 			if (!card) return;
 			make_dom();
 			render_card_meta();
-			bind_expand_button();
+			if(cur_list.board.show_preview_card){
+				bind_expand_button();
+			}
 		}
 
 		function make_dom() {
