@@ -16,6 +16,8 @@ import "./frappe/query_string.js";
 
 import "./frappe/upload.js";
 
+import "./frappe/field_translator.js";
+
 import "./frappe/model/meta.js";
 import "./frappe/model/model.js";
 import "./frappe/model/perm.js";
