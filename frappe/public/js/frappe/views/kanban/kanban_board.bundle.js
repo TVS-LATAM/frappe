@@ -27,9 +27,9 @@ const ProjectStatusOptions = {
 };
 
 const KanbanSize = {
-    small: "small",
-    medium: "medium",
-    large: "large"
+	small: "small",
+	medium: "medium",
+	large: "large"
 };
 
 const zoomLevels = {
@@ -162,7 +162,7 @@ const columnsByMechanic = {
 						.then(function () {
 							return update_kanban_board(board.name, col.title, action);
 						})
-						.then(	
+						.then(
 							function (r) {
 								var cols = r.message;
 								context.commit("update_state", {
@@ -385,7 +385,7 @@ const columnsByMechanic = {
 						return countByColumn;
 					} else return ''
 				},
-				update_kanban_size_range: function(context, value){
+				update_kanban_size_range: function (context, value) {
 					context.state.kanban_size_range = value
 				},
 			},
@@ -453,13 +453,190 @@ const columnsByMechanic = {
 				return state.empty_state;
 			}, show_empty_state);
 
-			store.watch((state)=>{
+			store.watch((state) => {
 				update_kanban_size(state.kanban_size_range)
 				return state.kanban_size_range
 			})
 
 			store.dispatch('update_order')
 
+			console.log("kanban board initialized")
+			render_scroll_box();
+		}
+
+		function render_scroll_box() {
+			// Ensure container is relative for absolute positioning of the box
+			if (self.wrapper.css('position') === 'static') {
+				self.wrapper.css('position', 'relative');
+			}
+
+			let scroll_box = self.wrapper.find('.kanban-scroll-box');
+			if (!scroll_box.length) {
+				scroll_box = $('<div class="kanban-scroll-box"></div>');
+				self.wrapper.append(scroll_box);
+			}
+
+			// Clear previous content
+			scroll_box.empty();
+
+			// Get the scrollable container.
+			// self.$kanban_board is the .kanban div which is scrollable
+			const wrapperEl = self.$kanban_board.get(0);
+			const $wrapper = self.$kanban_board;
+
+			// Add rectangles for each column
+			// accessing store.state.columns which should be populated by now or watcher will handle?
+			// The original logic iterated this.board.columns. 
+			// Here we can use store.state.columns
+			if (store.state.columns) {
+				store.state.columns.forEach(col => {
+					if (col.status !== 'Archived') {
+						scroll_box.append('<div class="kanban-scroll-box-rect"></div>');
+					}
+				});
+			}
+
+			// Add draggable tracker
+			let tracker = $('<div class="kanban-scroll-tracker"></div>');
+			scroll_box.append(tracker);
+
+			// --- Sync Logic ---
+
+			const updateTrackerDimensions = () => {
+				if (!wrapperEl) return;
+				const totalWidth = wrapperEl.scrollWidth;
+				const visibleWidth = wrapperEl.clientWidth;
+				const scrollBoxWidth = scroll_box.width(); // Should be 150px
+
+				if (totalWidth <= visibleWidth) {
+					tracker.width(scrollBoxWidth);
+					tracker.css('left', 0);
+					return;
+				}
+
+				// Calculate proportional width
+				let trackerWidth = (visibleWidth / totalWidth) * scrollBoxWidth;
+				// Enforce min width so it remains grabable
+				if (trackerWidth < 10) trackerWidth = 10;
+				tracker.width(trackerWidth);
+
+				// Sync position
+				const maxScroll = totalWidth - visibleWidth;
+				const maxTrackerLeft = scrollBoxWidth - trackerWidth;
+				const scrollRatio = wrapperEl.scrollLeft / maxScroll;
+
+				tracker.css('left', (scrollRatio * maxTrackerLeft) + 'px');
+			};
+
+			// 1. Sync Scroll -> Tracker
+			// Use namespace to allow easy removal
+			$wrapper.off('scroll.kanbanTracker').on('scroll.kanbanTracker', () => {
+				if (isDragging) return; // Don't fight drag
+				updateTrackerDimensions();
+			});
+
+			// 2. Sync Resize -> Tracker
+			// Use ResizeObserver for robust detection of wrapper changes
+			const resizeObserver = new ResizeObserver(() => {
+				updateTrackerDimensions();
+			});
+			if (wrapperEl) {
+				resizeObserver.observe(wrapperEl);
+			}
+			// Also window resize for good measure
+			$(window).off('resize.kanbanTracker').on('resize.kanbanTracker', updateTrackerDimensions);
+
+			// Initial Call
+			// Use setTimeout to allow potential layout settle
+			setTimeout(updateTrackerDimensions, 100);
+
+			// 3. Sync Drag -> Scroll
+			let isDragging = false;
+			let startX;
+			let initialLeft;
+
+			tracker.on('mousedown', (e) => {
+				isDragging = true;
+				startX = e.clientX;
+				initialLeft = tracker.position().left;
+				tracker.css('cursor', 'grabbing');
+				e.preventDefault();
+			});
+
+			$(document).on('mousemove.kanbanTracker', (e) => {
+				if (!isDragging) return;
+
+				// Re-calculate dimensions in case it changed
+				const maxTrackerLeft = scroll_box.width() - tracker.outerWidth();
+
+				let deltaX = e.clientX - startX;
+				let newLeft = initialLeft + deltaX;
+
+				// Constrain
+				if (newLeft < 0) newLeft = 0;
+				if (newLeft > maxTrackerLeft) newLeft = maxTrackerLeft;
+
+				tracker.css('left', newLeft + 'px');
+
+				// Drive Scroll
+				const totalWidth = wrapperEl.scrollWidth;
+				const visibleWidth = wrapperEl.clientWidth;
+				const maxScroll = totalWidth - visibleWidth;
+
+				if (maxScroll > 0 && maxTrackerLeft > 0) {
+					const ratio = newLeft / maxTrackerLeft;
+					wrapperEl.scrollLeft = ratio * maxScroll;
+				}
+			});
+
+			$(document).on('mouseup.kanbanTracker', () => {
+				if (isDragging) {
+					isDragging = false;
+					tracker.css('cursor', 'grab');
+				}
+			});
+
+			const style_id = "kanban-scroll-box-style";
+			if (!$("#" + style_id).length) {
+				const css = `
+					.kanban, .kanban-board-wrapper {
+						display: flex;
+						flex-wrap: nowrap;
+						overflow-x: auto;
+					}
+					.kanban-scroll-box {
+						position: absolute;
+						bottom: 15px;
+						left: 15px;
+						width: 150px;
+						height: 50px;
+						background-color: white;
+						z-index: 999;
+						display: flex;
+						flex-direction: row;
+						justify-content: space-evenly;
+						padding: 4px;
+						border: 0.5px solid black;
+					}
+					.kanban-scroll-box-rect {
+						width: 4px;
+						height: 100%;
+						background-color: #c7c7c7;
+						border-radius: 2px;
+					}
+					.kanban-scroll-tracker {
+						position: absolute;
+						top: 0;
+						height: 100%;
+						/* width set dynamically */
+						border: 2px solid blue;
+						background-color: transparent;
+						cursor: grab;
+						box-sizing: border-box;
+					}
+				`;
+				$(`<style id="${style_id}">`).prop("type", "text/css").html(css).appendTo("head");
+			}
 		}
 
 		function prepare() {
@@ -650,7 +827,7 @@ const columnsByMechanic = {
 			}
 		}
 
-		function update_kanban_size(size){
+		function update_kanban_size(size) {
 			kanban_size = size
 		}
 
@@ -693,7 +870,7 @@ const columnsByMechanic = {
 		}
 
 		let loading = false
-		function make_dom(call=false) {
+		function make_dom(call = false) {
 			self.$kanban_column = $(
 				frappe.render_template("kanban_column", {
 					title: column.title,
@@ -739,7 +916,7 @@ const columnsByMechanic = {
 					}
 				})
 			}
-			if(call){
+			if (call) {
 				frappe.call({
 					method: 'frappe.desk.reportview.get',
 					args: {
@@ -762,9 +939,9 @@ const columnsByMechanic = {
 		// Función para filtrar y ordenar los proyectos
 		function filterAndSortProjects(cards) {
 			return cards
-			.filter(card => card.column !== 'In queue' && card.column !== 'In parking')
-			// Ordenar los resultados por doc.modified (de más viejo a más nuevo)
-			.sort((a, b) => new Date(a.status_modified) - new Date(b.status_modified));
+				.filter(card => card.column !== 'In queue' && card.column !== 'In parking')
+				// Ordenar los resultados por doc.modified (de más viejo a más nuevo)
+				.sort((a, b) => new Date(a.status_modified) - new Date(b.status_modified));
 		}
 
 
@@ -820,7 +997,7 @@ const columnsByMechanic = {
 					store.commit('set_dragging', false);
 					wrapper.find(".kanban-card.add-card").fadeIn(100);
 					wrapper.find(".kanban-cards").height("auto");
-					
+
 					// update order
 					const args = {
 						name: decodeURIComponent($(e.item).attr("data-name")),
@@ -837,20 +1014,20 @@ const columnsByMechanic = {
 						store.dispatch("update_order_for_single_card", args);
 						return;
 					}
-					
+
 					// Validate transitions based on destination column
 					let validationPassed = true;
-					
+
 					// Mechanic validation - Check if user is a mechanic or junior mechanic
 					const isMechanic = await erpnext.utils.isMechanic();
 					const isJuniorMechanic = await erpnext.utils.isJuniorMechanic();
-					
+
 					if (isMechanic || isJuniorMechanic) {
 						frappe.db.set_value("Project", args.name, "status", args.from_colname);
 						showMessageNotAllowedUpdateStatus();
 						validationPassed = false;
 					}
-					
+
 					// Quality check approved validation
 					if (validationPassed && args.to_colname === "Quality check approved") {
 						await validate_project_quotations_and_requirements(args)
@@ -862,7 +1039,7 @@ const columnsByMechanic = {
 								validationPassed = false;
 							});
 					}
-					
+
 					// Completed validation
 					if (validationPassed && args.to_colname === "Completed") {
 						await validate_project_loan_car(args)
@@ -873,7 +1050,7 @@ const columnsByMechanic = {
 								console.log(`Validation failed for Completed: ${error || 'User cancelled'}`);
 								validationPassed = false;
 							});
-					}					
+					}
 					// Remote diagnose to Completed special case
 					if (validationPassed && args.from_colname === "In diagnosis" && args.to_colname === "After diagnosis") {
 						showSentMessageAfterRemoteDiagnoseDialog(args.name);
@@ -882,7 +1059,7 @@ const columnsByMechanic = {
 					if (validationPassed && args.to_colname === "In parking") {
 						deactivateChatbot(args.name);
 					}
-					
+
 					// Only update if all validations passed
 					if (validationPassed) {
 						store.dispatch("update_order_for_single_card", args);
@@ -991,7 +1168,7 @@ const columnsByMechanic = {
 			if (!card) return;
 			make_dom();
 			render_card_meta();
-			if(cur_list.board.show_preview_card){
+			if (cur_list.board.show_preview_card) {
 				bind_expand_button();
 			}
 		}
@@ -1028,7 +1205,7 @@ const columnsByMechanic = {
 
 		function get_doc_content(card) {
 			let fields = [];
- 			if(!cur_list.board.fields?.length) return;
+			if (!cur_list.board.fields?.length) return;
 			let render_fields = [...cur_list.board.fields];
 			const icon_map = {
 				'Project': 'rectangle_history_circle_user.svg',
@@ -1055,14 +1232,14 @@ const columnsByMechanic = {
 			}
 
 			if (card.column === ProjectStatusOptions.RemoteDiagnose) {
-				render_fields.push(...['remote_diagnostic_date','remote_diagnostic_time']);
+				render_fields.push(...['remote_diagnostic_date', 'remote_diagnostic_time']);
 			}
 
 			if (![ProjectStatusOptions.InQueue, ProjectStatusOptions.InParking].includes(card.column)) {
 				render_fields = render_fields.filter(field => field !== "queue_position");
 			}
 
-			if(card.column === ProjectStatusOptions.InQueue) {
+			if (card.column === ProjectStatusOptions.InQueue) {
 				render_fields = render_fields.filter(field => field !== "parking_date")
 			}
 
@@ -1107,7 +1284,7 @@ const columnsByMechanic = {
 			const $assignees_group = get_assignees_group();
 
 			// if(kanban_size == KanbanSize.large){
-				html += `<span class="kanban-assignments"></span>${cur_list.get_like_html(card)}`;
+			html += `<span class="kanban-assignments"></span>${cur_list.get_like_html(card)}`;
 			// }
 
 			if (card.conversation) {
@@ -1136,15 +1313,15 @@ const columnsByMechanic = {
 			}
 			html += '</div>'
 
-				self.$card
+			self.$card
 				.find(".kanban-card-meta")
 				.empty()
 				.append(html);
 
 			// if (kanban_size == KanbanSize.large) {
-				self.$card
-					.find(".kanban-assignments")
-					.append($assignees_group);
+			self.$card
+				.find(".kanban-assignments")
+				.append($assignees_group);
 			// }
 		}
 
@@ -1194,7 +1371,7 @@ const columnsByMechanic = {
 				[QuotationStatus.PaymentReady]: { color: '#005bed' }
 			}
 
-			if(status === "No") return ''
+			if (status === "No") return ''
 
 			return `<i class="fa fa-file ${opts[status]?.class ?? ''}" style="color:${opts[status]?.color ?? 'red'}" title="${status}"></i>`;
 		}
@@ -1262,14 +1439,14 @@ const columnsByMechanic = {
 			}
 
 			// Handle click on detail button (for desktop)
-			$detailButton.on('click', function(e) {
+			$detailButton.on('click', function (e) {
 				e.preventDefault();
 				e.stopPropagation();
 				toggle_card_details();
 			});
 
 			// Handle click on touch button (for mobile/touch devices)
-			$touchButton.on('click', function(e) {
+			$touchButton.on('click', function (e) {
 				e.preventDefault();
 				e.stopPropagation();
 				toggle_card_details();
@@ -1277,30 +1454,30 @@ const columnsByMechanic = {
 
 			// For non-touch devices, support hover
 			if (!isTouchDevice) {
-					self.$card.on('mouseenter', function(e) {
-						if (store.state.is_dragging) return;
-						clearTimeout(mouseLeaveTimeout)
-						expand_card_details();
-					});
+				self.$card.on('mouseenter', function (e) {
+					if (store.state.is_dragging) return;
+					clearTimeout(mouseLeaveTimeout)
+					expand_card_details();
+				});
 
-					self.$card.on('mouseleave', function() {
-						if (store.state.is_dragging) return;
-						mouseLeaveTimeout = setTimeout(() => {
-							collapse_card_details();
-						})
-					});
+				self.$card.on('mouseleave', function () {
+					if (store.state.is_dragging) return;
+					mouseLeaveTimeout = setTimeout(() => {
+						collapse_card_details();
+					})
+				});
 
-				self.$card.on("mousedown", function(){
+				self.$card.on("mousedown", function () {
 					if (store.state.is_dragging) return;
 					clearTimeout(mouseLeaveTimeout)
 					collapse_card_details()
 				})
 
-				$detailsPanel.on('mouseenter', function(e) {
+				$detailsPanel.on('mouseenter', function (e) {
 					clearTimeout(mouseLeaveTimeout)
 				})
 
-				$detailsPanel.on('mouseleave', function() {
+				$detailsPanel.on('mouseleave', function () {
 					collapse_card_details();
 				});
 			}
@@ -1342,7 +1519,7 @@ const columnsByMechanic = {
 					$detailsPanel.css('top', cardRect.top - kanban.top + 'px');
 				}
 
-				
+
 				$detailsPanel.addClass('expanded');
 				self.$card.addClass('with-details');
 			}
@@ -1359,21 +1536,21 @@ const columnsByMechanic = {
 				// Add card fields to details panel
 				// Use card_fields if available, otherwise fall back to regular fields
 				let fields = cur_list.board.card_fields || cur_list.board.fields || [];
-				
+
 				fields.forEach(field_name => {
 					const field = frappe.meta.docfield_map[card.doctype]?.[field_name] ||
 						frappe.model.get_std_field(field_name);
-					
+
 					if (!field) return;
 
-					if(field.fieldtype === "Text Editor" || field.fieldtype === "HTML Editor"){
+					if (field.fieldtype === "Text Editor" || field.fieldtype === "HTML Editor") {
 
 						function renderHtmlContent(content) {
 							const div = document.createElement('div');
 							div.innerHTML = content;
-							return div.innerHTML; 
+							return div.innerHTML;
 						}
-					
+
 						html += `
 								<div class="kanban-card-detail-item item-full">
 										<div class="kanban-card-detail-label">${__(field.label)}</div>
@@ -1517,11 +1694,11 @@ const columnsByMechanic = {
 		return differenceInDays >= 1;
 	}
 
-	async function last_message_from_customer(phone_numbers){
+	async function last_message_from_customer(phone_numbers) {
 		const conversations = await frappe.db.get_list('Conversation', {
-			filters:{
-					from: ["in", phone_numbers],
-					last_message_from_customer: 1
+			filters: {
+				from: ["in", phone_numbers],
+				last_message_from_customer: 1
 			},
 			fields: ["from"],
 		})
@@ -1681,7 +1858,7 @@ const columnsByMechanic = {
 		const settings = await frappe
 			.call("frappe.desk.form.load.getdoc", { doctype: "User", name: user })
 			.then((r) => {
-			return r.docs && r.docs.length ? r.docs[0] : {size_kanban: KanbanSize.large}
+				return r.docs && r.docs.length ? r.docs[0] : { size_kanban: KanbanSize.large }
 			});
 		const value = settings.size_kanban ?? KanbanSize.large
 		store.dispatch("update_kanban_size_range", value)
@@ -1693,12 +1870,12 @@ const columnsByMechanic = {
 		return value
 	}
 
-	function setup_zoom_component(){
+	function setup_zoom_component() {
 		const zoomSlider = document.getElementById('zoom-slider');
 		const zoomIn = document.getElementById('zoom-icon-in');
 		const zoomOut = document.getElementById('zoom-icon-out');
 
-		setTimeout(()=>{},1000)
+		setTimeout(() => { }, 1000)
 		zoomIn.addEventListener('click', () => {
 			if (zoomSlider.value < 3) {
 				zoomSlider.value = parseInt(zoomSlider.value) + 1;
@@ -1788,7 +1965,7 @@ const columnsByMechanic = {
 		return zoomState;
 	}
 
-	function validate_project_quotations_and_requirements(args){
+	function validate_project_quotations_and_requirements(args) {
 		return new Promise(async (resolve, reject) => {
 			const project = await frappe.db.get_doc('Project', args.name)
 			const incomplete_requirements = project.requirements.filter(requirement => !requirement.completed)
@@ -1803,7 +1980,7 @@ const columnsByMechanic = {
 				fields: ["name", "status"]
 			})
 
-			if(!quotations?.length && !incomplete_requirements.length) {
+			if (!quotations?.length && !incomplete_requirements.length) {
 				resolve()
 				return
 			}
@@ -1812,11 +1989,11 @@ const columnsByMechanic = {
 		})
 	}
 
-	function validate_project_loan_car(args){
+	function validate_project_loan_car(args) {
 		return new Promise(async (resolve, reject) => {
-			const loan_car = await frappe.db.get_list('Loan car', { fields: ["name", "status"], filters: [["project", "=", args.name],["status", "!=", "Paid"], ["status", "!=", "Done"], ["status", "!=", "Cancelled"]] })
+			const loan_car = await frappe.db.get_list('Loan car', { fields: ["name", "status"], filters: [["project", "=", args.name], ["status", "!=", "Paid"], ["status", "!=", "Done"], ["status", "!=", "Cancelled"]] })
 
-			if(!loan_car.length) {
+			if (!loan_car.length) {
 				resolve()
 				return
 			}
@@ -1832,12 +2009,12 @@ const columnsByMechanic = {
 			title: 'Confirm',
 			fields: buildFields(args, quotations, incomplete_requirements),
 			primary_action_label: 'Confirm',
-			primary_action: function() {
+			primary_action: function () {
 				dialog.hide();
 				resolve()
 			},
 			secondary_action_label: 'Cancel',
-			secondary_action: function() {
+			secondary_action: function () {
 				frappe.db.set_value("Project", args.name, "status", args.from_colname)
 				reject()
 				dialog.hide();
@@ -1850,7 +2027,7 @@ const columnsByMechanic = {
 		dialog.show();
 	}
 
-	function buildFields(args, quotations, incomplete_requirements){
+	function buildFields(args, quotations, incomplete_requirements) {
 		const quotation_fields = [
 			{
 				fieldtype: 'HTML',
@@ -1892,11 +2069,11 @@ const columnsByMechanic = {
 
 		let fields = []
 
-		if(quotations.length){
+		if (quotations.length) {
 			fields.push(...quotation_fields)
 		}
 
-		if(incomplete_requirements.length){
+		if (incomplete_requirements.length) {
 			fields.push(...requirements_fields)
 		}
 
@@ -1915,7 +2092,7 @@ const columnsByMechanic = {
 				},
 			],
 			primary_action_label: 'Yes',
-			primary_action: async function() {
+			primary_action: async function () {
 				const { aws_url } = await frappe.db.get_doc("Whatsapp Config")
 				await frappe.call({
 					method: 'frappe.desk.doctype.kanban_board.kanban_board.call_send_whatsapp_message',
@@ -1924,7 +2101,7 @@ const columnsByMechanic = {
 				dialog.hide();
 			},
 			secondary_action_label: 'No',
-			secondary_action: function() {
+			secondary_action: function () {
 				dialog.hide();
 			}
 		});
@@ -1932,7 +2109,7 @@ const columnsByMechanic = {
 		dialog.show();
 	}
 
-	function showLoanCarNotPaidAlert(loan_car, reject){
+	function showLoanCarNotPaidAlert(loan_car, reject) {
 		const dialog = new frappe.ui.Dialog({
 			title: 'Loan Car Alert',
 			fields: [
@@ -1942,7 +2119,7 @@ const columnsByMechanic = {
 				},
 			],
 			primary_action_label: 'Ok',
-			primary_action: function() {
+			primary_action: function () {
 				reject()
 				dialog.hide();
 			},
@@ -1966,8 +2143,8 @@ const columnsByMechanic = {
 	async function deactivateChatbot(project_name) {
 		const project = await frappe.db.get_doc('Project', project_name)
 		const conversations = await frappe.db.get_list('Conversation', { filters: { from: project.custom_customers_phone_number } })
-		for(const conversation of conversations){
-			await frappe.db.set_value('Conversation', conversation.name ,{ 'is_auto_reply': 0, 'seen': 0})
+		for (const conversation of conversations) {
+			await frappe.db.set_value('Conversation', conversation.name, { 'is_auto_reply': 0, 'seen': 0 })
 		}
 	}
 })();
