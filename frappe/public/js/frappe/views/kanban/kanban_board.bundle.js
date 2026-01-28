@@ -555,21 +555,20 @@ const columnsByMechanic = {
 			let startX;
 			let initialLeft;
 
-			tracker.on('mousedown', (e) => {
+			const onStart = (clientX) => {
 				isDragging = true;
-				startX = e.clientX;
+				startX = clientX;
 				initialLeft = tracker.position().left;
 				tracker.css('cursor', 'grabbing');
-				e.preventDefault();
-			});
+			};
 
-			$(document).on('mousemove.kanbanTracker', (e) => {
+			const onMove = (clientX) => {
 				if (!isDragging) return;
 
 				// Re-calculate dimensions in case it changed
 				const maxTrackerLeft = scroll_box.width() - tracker.outerWidth();
 
-				let deltaX = e.clientX - startX;
+				let deltaX = clientX - startX;
 				let newLeft = initialLeft + deltaX;
 
 				// Constrain
@@ -587,13 +586,48 @@ const columnsByMechanic = {
 					const ratio = newLeft / maxTrackerLeft;
 					wrapperEl.scrollLeft = ratio * maxScroll;
 				}
-			});
+			};
 
-			$(document).on('mouseup.kanbanTracker', () => {
+			const onEnd = () => {
 				if (isDragging) {
 					isDragging = false;
 					tracker.css('cursor', 'grab');
 				}
+			};
+
+			// Mouse Events
+			tracker.on('mousedown', (e) => {
+				onStart(e.clientX);
+				e.preventDefault();
+			});
+
+			$(document).on('mousemove.kanbanTracker', (e) => {
+				onMove(e.clientX);
+			});
+
+			$(document).on('mouseup.kanbanTracker', () => {
+				onEnd();
+			});
+
+			// Touch Events
+			tracker.on('touchstart', (e) => {
+				const touch = e.originalEvent.touches[0];
+				onStart(touch.clientX);
+				// e.preventDefault(); // Sometimes needed, but might interfere with scrolling if not dragging? 
+				// Since we are dragging the tracker, we probably want to prevent default scroll behavior of the page
+				// e.preventDefault(); 
+			});
+
+			$(document).on('touchmove.kanbanTracker', (e) => {
+				if (isDragging) {
+					const touch = e.originalEvent.touches[0];
+					onMove(touch.clientX);
+					//e.preventDefault(); // Prevent page scrolling while dragging tracker
+				}
+			});
+
+			$(document).on('touchend.kanbanTracker', () => {
+				onEnd();
 			});
 
 			const style_id = "kanban-scroll-box-style";
