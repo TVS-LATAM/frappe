@@ -187,6 +187,7 @@ def get():
 	bootinfo["is_mechanic"] = get_is_mechanic()
 	bootinfo["is_junior_mechanic"] = get_is_junior_mechanic()
 	bootinfo["is_senior_mechanic"] = get_is_senior_mechanic()
+	bootinfo["is_calibrator"] = get_is_calibrator()
 
 	return bootinfo
 
@@ -528,5 +529,12 @@ def get_is_junior_mechanic():
 def get_is_senior_mechanic():
 	role = frappe.db.get_value("User", frappe.session.user, "role_profile_name")
 	if role == "Senior Mechanic":
+		return True
+	return False
+
+@frappe.whitelist()
+def get_is_calibrator():
+	role = frappe.db.get_value("User", frappe.session.user, "role_profile_name")
+	if role == "Calibrator":
 		return True
 	return False
