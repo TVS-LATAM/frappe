@@ -470,6 +470,12 @@ const columnsByMechanic = {
 				self.wrapper.css('position', 'relative');
 			}
 
+			let toggle_btn = self.wrapper.find('.kanban-scroll-toggle');
+			if (!toggle_btn.length) {
+				toggle_btn = $('<div class="kanban-scroll-toggle"><i class="fa fa-chevron-left"></i></div>');
+				self.wrapper.append(toggle_btn);
+			}
+
 			let scroll_box = self.wrapper.find('.kanban-scroll-box');
 			if (!scroll_box.length) {
 				scroll_box = $('<div class="kanban-scroll-box"></div>');
@@ -630,6 +636,14 @@ const columnsByMechanic = {
 				onEnd();
 			});
 
+			toggle_btn.off('click').on('click', (e) => {
+				e.stopPropagation();
+				scroll_box.toggleClass('collapsed');
+				toggle_btn.toggleClass('collapsed');
+				const is_collapsed = scroll_box.hasClass('collapsed');
+				toggle_btn.find('i').toggleClass('fa-chevron-left', !is_collapsed).toggleClass('fa-chevron-right', is_collapsed);
+			});
+
 			const style_id = "kanban-scroll-box-style";
 			if (!$("#" + style_id).length) {
 				const css = `
@@ -640,8 +654,8 @@ const columnsByMechanic = {
 					}
 					.kanban-scroll-box {
 						position: absolute;
-						bottom: 15px;
-						left: 15px;
+						bottom: -3%;
+						left: 40px;
 						width: 150px;
 						height: 50px;
 						background-color: white;
@@ -651,6 +665,31 @@ const columnsByMechanic = {
 						justify-content: space-evenly;
 						padding: 4px;
 						border: 0.5px solid black;
+						transition: transform 0.3s ease, opacity 0.3s ease;
+					}
+					.kanban-scroll-box.collapsed {
+						transform: translateX(-200px);
+						opacity: 0;
+						pointer-events: none;
+					}
+					.kanban-scroll-toggle {
+						position: absolute;
+						bottom: -3%;
+						left: 0px;
+						width: 30px;
+						height: 50px;
+						background-color: #f0f0f0;
+						z-index: 1000;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						cursor: pointer;
+						border: 0.5px solid black;
+						border-radius: 4px 0 0 4px;
+						transition: left 0.3s ease;
+					}
+					.kanban-scroll-toggle:hover {
+						background-color: #e0e0e0;
 					}
 					.kanban-scroll-box-rect {
 						width: 4px;
