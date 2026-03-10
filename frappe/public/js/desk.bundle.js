@@ -68,6 +68,7 @@ import "./frappe/utils/datatable.js";
 import "./frappe/upload.js";
 import "./frappe/ui/tree.js";
 import "./frappe/field_translator.js";
+import "./frappe/show_icons.js";
 
 
 import "./frappe/views/container.js";
