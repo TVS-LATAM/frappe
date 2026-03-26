@@ -1356,19 +1356,19 @@ const columnsByMechanic = {
 
 			const $assignees_group = get_assignees_group();
 
-			// if(kanban_size == KanbanSize.large){
-			html += `<span class="kanban-assignments"></span>${cur_list.get_like_html(card)}`;
-			// }
+			if (card.doctype === 'Project') {
+				html += `<span class="kanban-assignments"></span>${cur_list.get_like_html(card)}`;
 
-			if (card.conversation) {
-				html += '<img src="/assets/frappe/icons/jobcard/square-whatsapp.svg" style="height:1.2rem;margin-top:2px;" />'
+				if (card.conversation) {
+					html += '<img src="/assets/frappe/icons/jobcard/square-whatsapp.svg" style="height:1.2rem;margin-top:2px;" />'
+				}
+
+				html += getPartsIcons()
+				html += getSoftwareIcons()
+				html += getLoanCarIcons()
+				html += getPickupIcon()
+				html += getQuotationIcon()
 			}
-
-			html += getPartsIcons()
-			html += getSoftwareIcons()
-			html += getLoanCarIcons()
-			html += getPickupIcon()
-			html += getQuotationIcon()
 
 			if (card.color && frappe.ui.color.validate_hex(card.color)) {
 				const $div = $("<div>");
