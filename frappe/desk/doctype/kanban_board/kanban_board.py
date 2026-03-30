@@ -138,12 +138,14 @@ def update_order(board_name, order):
     order_dict = json.loads(order)
 
     # Standard processing for all doctypes
+    is_virtual = frappe.get_meta(doctype).is_virtual
     for col_name, cards in order_dict.items():
-        for card in cards:
-            column = frappe.get_value(doctype, {"name": card}, fieldname)
-            if column != col_name:
-                frappe.set_value(doctype, card, fieldname, col_name)
-                updated_cards.append(dict(name=card, column=col_name))
+        if not is_virtual:
+            for card in cards:
+                column = frappe.get_value(doctype, {"name": card}, fieldname)
+                if column != col_name:
+                    frappe.set_value(doctype, card, fieldname, col_name)
+                    updated_cards.append(dict(name=card, column=col_name))
 
         for column in board.columns:
             if column.column_name == col_name:
@@ -241,7 +243,13 @@ def update_order_for_single_card(board_name, docname, from_colname, to_colname, 
     board.save(ignore_permissions=True)
 
     # update changed value in doc
-    frappe.set_value(doctype, docname, fieldname, to_colname)
+    # update changed value in doc
+    if frappe.get_meta(doctype).is_virtual:
+        doc = frappe.get_doc(doctype, docname)
+        doc.set(fieldname, to_colname)
+        doc.db_update()
+    else:
+        frappe.set_value(doctype, docname, fieldname, to_colname)
 
     return board
 

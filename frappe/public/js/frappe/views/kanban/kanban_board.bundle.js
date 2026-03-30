@@ -236,6 +236,7 @@ const columnsByMechanic = {
 					// cache original order
 					const _cards = context.state.cards.slice();
 					const _columns = context.state.columns.slice();
+
 					let args = {};
 					let method_name = "";
 
@@ -1297,7 +1298,9 @@ const columnsByMechanic = {
 				'R.D Time': 'clock.svg',
 				'Callback date': 'calendar.svg',
 				'Calback time': 'clock.svg',
-				'Type of job': 'ballot_check_sharp.svg'
+				'Type of job': 'ballot_check_sharp.svg',
+				'Vehicle': 'car.svg',
+				'Total Amount': 'circle_info.svg'
 			};
 
 			if (card.column === ProjectStatusOptions.RequestCallback) {
