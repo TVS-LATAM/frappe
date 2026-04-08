@@ -509,6 +509,7 @@ frappe.views.KanbanView.show_kanban_dialog = function (doctype) {
 };
 
 async function insertFreezeQueuePosition(context) {
+	if (context.doctype !== 'Project') return;
 	const { auto_move_paused } = await frappe.db.get_doc('Queue Settings')
 	setTimeout(() => {
 		const containers = document.querySelectorAll('div[id*="Kanban"] div.page-head.flex > div > div > div.flex.col.page-actions.justify-content-end')
