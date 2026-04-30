@@ -513,6 +513,7 @@ def get_projects_ordered_by_queue_position_and_appointment_date():
                 "plate",
                 "appointment_date",
                 "queue_position",
+                "lane",
                 queue_cast,
             ],
             filters={
