@@ -1269,7 +1269,7 @@ const columnsByMechanic = {
 			}
 			self.$card = $(frappe.render_template("kanban_card", opts)).appendTo(wrapper);
 			if (card.conversation) {
-				self.$card.find(".kanban-card.content").css("border", "2px solid #0cc144");
+				self.$card.find(".kanban-card.content").addClass("conversation-border");
 			}
 			if (!frappe.model.can_write(card.doctype)) {
 				// Undraggable card without 'write' access to reference doctype
@@ -1328,16 +1328,16 @@ const columnsByMechanic = {
 				let value = frappe.format(field_name === "model" ? `${card.doc[field_name]} - ${card.doc.dsg_model}` : card.doc[field_name], field)
 				let title = !/^<a/.test(value) ? value : ''
 				fields.push(`
-					<div class="text-muted text-truncate">
+					<div class="text-muted text-truncate" style="display: flex; align-items: center; gap: 4px; margin-bottom: 1px; font-size: 10px;">
 						${label}
-						<span>${value}</span>
+						<span style="flex: 1; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">${value}</span>
 					</div>
 				`);
 			}
 			if (card.border.message) {
 				fields.push(`
-					<div class="text-muted text-truncate">
-						<span style="color: red; font-style: italic; font-size: xx-small"> ${card.border.message} </span>
+					<div style="margin-top: 2px;">
+						<span style="color: #d14343; font-style: italic; font-size: 9px; display: block; line-height: 1.1;"> ${card.border.message} </span>
 					</div>
 				`);
 			}
