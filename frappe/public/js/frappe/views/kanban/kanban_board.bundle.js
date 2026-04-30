@@ -1262,6 +1262,7 @@ const columnsByMechanic = {
 				appointment_date: card.doc.appointment_date
 					? card.doc.appointment_date.split('-').slice(1).reverse().join('-')
 					: "",
+				lane_icon: getLaneIcon(),
 			};
 
 			if ([ProjectStatusOptions.InQueue, ProjectStatusOptions.InParking].includes(card.column)) {
@@ -1369,7 +1370,6 @@ const columnsByMechanic = {
 				html += getLoanCarIcons()
 				html += getPickupIcon()
 				html += getQuotationIcon()
-				html += getLaneIcon()
 			}
 
 			if (card.color && frappe.ui.color.validate_hex(card.color)) {
@@ -1456,7 +1456,7 @@ const columnsByMechanic = {
 
 		function getLaneIcon() {
 			if (card.doc.lane === "FAST") {
-				return '<i class="fa fa-tint" style="color: #4287f5; font-size: 1rem; margin-left: 4px; vertical-align: middle;" title="Fast Lane"></i>';
+				return '<i class="fa fa-tint" style="color: dark-brown; font-size: 1rem; margin-left: 4px; vertical-align: middle;" title="Fast Lane"></i>';
 			}
 			// Default or HEAVY
 			return '<i class="fa fa-wrench" style="color: #d1d1d1; font-size: 1.1rem; margin-left: 4px; vertical-align: middle;" title="Heavy Lane"></i>';

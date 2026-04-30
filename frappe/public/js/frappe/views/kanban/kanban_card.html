@@ -13,6 +13,11 @@
 							{{ title }}
 						</div>
 					</a>
+					{% if(lane_icon) { %}
+					<div class="lane-icon-header">
+						{{ lane_icon }}
+					</div>
+					{% } %}
 					{% if(queue_position !== 0) { %}
 					<div class="circle-position {% if appointment_date %}has-appointment red{% endif %}">
 						<span class="circle-icon">
@@ -198,5 +203,13 @@
 
 	.kanban-card-meta i {
 		font-size: 0.9rem !important;
+	}
+
+	.lane-icon-header {
+		margin-left: auto;
+		margin-right: 2rem;
+		display: flex;
+		align-items: center;
+		z-index: 10;
 	}
 </style>
