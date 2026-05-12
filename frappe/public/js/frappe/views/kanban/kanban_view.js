@@ -511,11 +511,136 @@ frappe.views.KanbanView.show_kanban_dialog = function (doctype) {
 async function insertFreezeQueuePosition(context) {
 	if (context.doctype !== 'Project') return;
 	const { auto_move_paused } = await frappe.db.get_doc('Queue Settings')
+
+	if (!document.getElementById('kanban-toolbar-toggle-style')) {
+		const style = document.createElement('style');
+		style.id = 'kanban-toolbar-toggle-style';
+		style.textContent = `
+			.kanban-toolbar-toggles {
+				display: inline-flex;
+				align-items: center;
+				gap: 2px;
+				background: var(--bg-light-gray, #f4f5f6);
+				border: 1px solid var(--border-color, #e2e6e9);
+				border-radius: 6px;
+				padding: 3px 4px;
+				margin-right: 6px;
+			}
+			.kanban-toggle-switch {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				cursor: pointer;
+				font-size: 11px;
+				font-weight: 500;
+				color: var(--text-muted, #8d99a6);
+				white-space: nowrap;
+				user-select: none;
+				padding: 3px 7px;
+				border-radius: 4px;
+				transition: background 0.15s, color 0.15s;
+			}
+			.kanban-toggle-switch:hover {
+				background: rgba(0,0,0,0.05);
+				color: var(--text-color, #333);
+			}
+			.kanban-toggle-switch input[type="checkbox"] {
+				display: none;
+			}
+			.kanban-toggle-track {
+				width: 26px;
+				height: 14px;
+				background: #c8d0d8;
+				border-radius: 7px;
+				position: relative;
+				transition: background 0.2s;
+				flex-shrink: 0;
+			}
+			.kanban-toggle-track::after {
+				content: '';
+				position: absolute;
+				top: 2px;
+				left: 2px;
+				width: 10px;
+				height: 10px;
+				background: white;
+				border-radius: 50%;
+				transition: left 0.15s;
+				box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+			}
+			.kanban-toggle-switch input:checked ~ .kanban-toggle-track {
+				background: var(--primary, #5e64ff);
+			}
+			.kanban-toggle-switch input:checked ~ .kanban-toggle-track::after {
+				left: 14px;
+			}
+			.kanban-toggle-switch input:checked ~ .kanban-toggle-label {
+				color: var(--text-color, #333);
+			}
+			.kanban-controls-bar {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 5px 12px;
+				background: var(--fg-color, #fff);
+				border-bottom: 1px solid var(--border-color, #e2e6e9);
+				flex-shrink: 0;
+			}
+			.kanban-queue-filter-group {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				background: var(--bg-light-gray, #f4f5f6);
+				border: 1px solid var(--border-color, #e2e6e9);
+				border-radius: 6px;
+				padding: 3px 8px;
+				margin-right: 6px;
+			}
+			.kanban-queue-filter-label {
+				font-size: 11px;
+				font-weight: 500;
+				color: var(--text-muted, #8d99a6);
+				white-space: nowrap;
+			}
+			.kanban-queue-filter-select {
+				font-size: 11px;
+				font-weight: 500;
+				border: none;
+				background: transparent;
+				color: var(--text-color, #333);
+				cursor: pointer;
+				outline: none;
+				padding: 1px 2px;
+				border-radius: 4px;
+			}
+			.kanban-queue-filter-select:hover {
+				background: rgba(0,0,0,0.05);
+			}
+			.kanban.queue-filter-position .kanban-column[data-column-value="In queue"] .kanban-card-wrapper:has(.circle-position.has-appointment) {
+				display: none;
+			}
+			.kanban.queue-filter-appointment .kanban-column[data-column-value="In queue"] .kanban-card-wrapper:not(:has(.circle-position.has-appointment)) {
+				display: none;
+			}
+		`;
+		document.head.appendChild(style);
+	}
+
+	function applyQueueColumnFilter(value) {
+		const kanban = document.querySelector('.kanban');
+		if (!kanban) return;
+		kanban.classList.remove('queue-filter-position', 'queue-filter-appointment');
+		if (value === 'position') kanban.classList.add('queue-filter-position');
+		if (value === 'appointment') kanban.classList.add('queue-filter-appointment');
+	}
+
 	setTimeout(() => {
+		if (document.getElementById('kanban-controls-bar')) return;
+
+		// Keep the Filters button in the page-actions area
 		const containers = document.querySelectorAll('div[id*="Kanban"] div.page-head.flex > div > div > div.flex.col.page-actions.justify-content-end')
-		for (const container of containers){
-			const exists = container.querySelector('#queue-freeze')
-			if (!exists) {
+		for (const container of containers) {
+			if (!container.querySelector('#btn_collapse_filters_area')) {
 				const custom_button_filter = document.createElement('button');
 				custom_button_filter.setAttribute('id', 'btn_collapse_filters_area');
 				custom_button_filter.classList.add('btn', 'btn-primary', 'btn-sm');
@@ -525,50 +650,95 @@ async function insertFreezeQueuePosition(context) {
 				custom_button_filter.setAttribute('aria-expanded', 'false');
 				custom_button_filter.setAttribute('aria-controls', 'collapse_filters_area');
 				custom_button_filter.innerText = 'Filters';
-				container.append(custom_button_filter)
-				// const addProjectButton = container.querySelector('.primary-action');
-				// container.insertBefore(custom_button_filter, addProjectButton);
-
-				const input = document.createElement('input')
-				const label = document.createElement('label')
-				label.setAttribute('style', 'margin-right: 10px;display:flex;align-items:center;gap:10px;')
-				label.setAttribute('id', 'queue-freeze')
-				label.innerText = 'freeze queue positions'
-				label.appendChild(input)
-				input.setAttribute('type', 'checkbox')
-				input.setAttribute('style', 'cursor:pointer')
-				if (auto_move_paused) {
-					input.setAttribute('checked', 'checked')
-				}
-				container.prepend(label);
-				input.addEventListener('change', (event) => {
-					const isChecked = event.target.checked;
-					if (isChecked) {
-						showConfirmationDialog(input)
-						return
-					}
-
-					frappe.db.set_value('Queue Settings', 'Queue Settings', 'auto_move_paused', Number(isChecked))
-					frappe.msgprint(__('Status updated successfully'));
-				})
-				const preview_label = document.createElement('label')
-				const preview_input = document.createElement('input')
-				preview_label.setAttribute('style', 'margin-right: 10px;display:flex;align-items:center;gap:10px')
-				preview_label.setAttribute('id', 'show-preview')
-				preview_label.innerText = 'show preview'
-				preview_label.appendChild(preview_input)
-				preview_input.setAttribute('type', 'checkbox')
-				preview_input.setAttribute('style', 'cursor:pointer')
-				if (context.board.show_preview_card) {
-					preview_input.setAttribute('checked', 'checked')
-				}
-				container.prepend(preview_label);
-				preview_input.addEventListener('change', (event) => {
-					const isChecked = event.target.checked;
-					frappe.db.set_value('Kanban Board', context.board.name, 'show_preview_card', Number(isChecked))
-					window.location.reload()
-				})
+				container.append(custom_button_filter);
 			}
+		}
+
+		function makeToggle(id, text, checked) {
+			const label = document.createElement('label');
+			label.className = 'kanban-toggle-switch';
+			label.id = id;
+			const input = document.createElement('input');
+			input.type = 'checkbox';
+			if (checked) input.checked = true;
+			const track = document.createElement('span');
+			track.className = 'kanban-toggle-track';
+			const textSpan = document.createElement('span');
+			textSpan.className = 'kanban-toggle-label';
+			textSpan.textContent = text;
+			label.appendChild(input);
+			label.appendChild(track);
+			label.appendChild(textSpan);
+			return { label, input };
+		}
+
+		// Controls bar injected above the kanban board (not inside the page-head)
+		const controlsBar = document.createElement('div');
+		controlsBar.id = 'kanban-controls-bar';
+		controlsBar.className = 'kanban-controls-bar';
+
+		// Queue column filter dropdown
+		const queueFilterGroup = document.createElement('div');
+		queueFilterGroup.className = 'kanban-queue-filter-group';
+
+		const queueFilterLbl = document.createElement('span');
+		queueFilterLbl.className = 'kanban-queue-filter-label';
+		queueFilterLbl.textContent = 'Queue:';
+
+		const queueFilterSelect = document.createElement('select');
+		queueFilterSelect.id = 'queue-col-filter';
+		queueFilterSelect.className = 'kanban-queue-filter-select';
+		[
+			{ value: 'all', label: 'All' },
+			{ value: 'position', label: 'Queue position' },
+			{ value: 'appointment', label: 'Fixed appointment' },
+		].forEach(({ value, label }) => {
+			queueFilterSelect.appendChild(new Option(label, value));
+		});
+		const savedQueueFilter = localStorage.getItem('kanban_queue_col_filter') || 'all';
+		queueFilterSelect.value = savedQueueFilter;
+		applyQueueColumnFilter(savedQueueFilter);
+		queueFilterSelect.addEventListener('change', (event) => {
+			const value = event.target.value;
+			localStorage.setItem('kanban_queue_col_filter', value);
+			applyQueueColumnFilter(value);
+		});
+
+		queueFilterGroup.appendChild(queueFilterLbl);
+		queueFilterGroup.appendChild(queueFilterSelect);
+
+		// Boolean toggles group
+		const toggleGroup = document.createElement('div');
+		toggleGroup.className = 'kanban-toolbar-toggles';
+
+		const { label: previewLabel, input: previewInput } = makeToggle('show-preview', 'Preview', context.board.show_preview_card);
+		previewInput.addEventListener('change', (event) => {
+			const isChecked = event.target.checked;
+			frappe.db.set_value('Kanban Board', context.board.name, 'show_preview_card', Number(isChecked))
+			window.location.reload()
+		})
+
+		const { label: freezeLabel, input: freezeInput } = makeToggle('queue-freeze', 'Freeze queue', auto_move_paused);
+		freezeInput.addEventListener('change', (event) => {
+			const isChecked = event.target.checked;
+			if (isChecked) {
+				showConfirmationDialog(freezeInput)
+				return
+			}
+			frappe.db.set_value('Queue Settings', 'Queue Settings', 'auto_move_paused', Number(isChecked))
+			frappe.msgprint(__('Status updated successfully'));
+		})
+
+		toggleGroup.appendChild(previewLabel);
+		toggleGroup.appendChild(freezeLabel);
+
+		controlsBar.appendChild(queueFilterGroup);
+		controlsBar.appendChild(toggleGroup);
+
+		// Insert the controls bar before the .kanban element so it sits between the header and the board
+		const kanbanEl = document.querySelector('.kanban');
+		if (kanbanEl) {
+			kanbanEl.parentNode.insertBefore(controlsBar, kanbanEl);
 		}
 	}, 1500);
 }

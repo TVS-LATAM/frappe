@@ -1806,12 +1806,15 @@ const columnsByMechanic = {
 
 	function prepare_columns(columns) {
 		let cols = [];
+		const seen = new Set();
 		// const isAdmin = frappe.user.has_role("Administrator");
 		// const isMechanic = !isAdmin && frappe.user.has_role("Mechanic");
 		columns.forEach(function (col) {
 			// if (isMechanic && !columnsByMechanic[col.column_name]) {
 			// 	return; // Skip columns not in columnsByMechanic
 			// }
+			if (seen.has(col.column_name)) return;
+			seen.add(col.column_name);
 			col = {
 				title: col.column_name,
 				status: col.status,
