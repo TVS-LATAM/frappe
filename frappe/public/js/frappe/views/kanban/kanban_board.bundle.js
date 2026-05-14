@@ -1554,7 +1554,7 @@ const columnsByMechanic = {
 					if (store.state.is_dragging) return;
 					mouseLeaveTimeout = setTimeout(() => {
 						collapse_card_details();
-					})
+					}, 150);
 				});
 
 				self.$card.on("mousedown", function () {
@@ -1600,7 +1600,7 @@ const columnsByMechanic = {
 				if (cardRect.right + panelWidth + 5 > viewportWidth) {
 					$detailsPanel.css('left', (cardRect.left - panelWidth) + 'px');
 				} else {
-					$detailsPanel.css('left', (cardRect.right - kanban.left + 20) + 'px');
+					$detailsPanel.css('left', (cardRect.right - kanban.left + 2) + 'px');
 				}
 
 				if (cardRect.top + panelHeight > viewportHeight) {
