@@ -167,33 +167,40 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 		}
 		frappe.realtime.doctype_subscribe(this.doctype);
 		frappe.realtime.off("list_update");
+
+		let _pendingNames = [];
+		let _debounceTimer = null;
+
+		const flushPendingUpdates = () => {
+			if (!_pendingNames.length) return;
+			const names = [..._pendingNames];
+			_pendingNames = [];
+			frappe.call({
+				method: 'frappe.desk.reportview.get',
+				args: {
+					"doctype": this.doctype,
+					"fields": this.fields,
+					"filters": [['name', 'in', names]],
+					"start": 0,
+					"page_length": names.length,
+					"view": "List",
+					"with_comment_count": 1
+				}
+			}).then((res) => {
+				const cards = frappe.utils.dict(res.message.keys, res.message.values);
+				this.kanban.update_cards(cards);
+			});
+		};
+
 		frappe.realtime.on("list_update", (data) => {
-			if (data?.doctype !== this.doctype) {
-				return;
-			}
+			if (data?.doctype !== this.doctype) return;
 			// if some bulk operation is happening by selecting list items, don't refresh
-			if (this.$checks && this.$checks.length) {
-				return;
-			}
-			if (this.avoid_realtime_update()) {
-				return;
-			}
-				frappe.call({
-					method: 'frappe.desk.reportview.get',
-					args: {
-						"doctype": data.doctype,
-						"fields": ["*"],
-						"filters": [['name', 'in', [data.name]]],
-						"start": 0,
-						"page_length": 10,
-						"view": "List",
-						"with_comment_count": 1
-					}
-				}).then((res) => {
-					const data = frappe.utils.dict(res.message.keys, res.message.values)
-					this.kanban.update_cards(data);
-					this.kanban.update_columns()
-				})
+			if (this.$checks && this.$checks.length) return;
+			if (this.avoid_realtime_update()) return;
+
+			_pendingNames.push(data.name);
+			clearTimeout(_debounceTimer);
+			_debounceTimer = setTimeout(flushPendingUpdates, 400);
 		});
 		this.realtime_events_setup = true;
 	}

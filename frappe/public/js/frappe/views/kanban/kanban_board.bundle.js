@@ -54,6 +54,12 @@ const columnsByMechanic = {
 	let unread_conversations = []
 	var method_prefix = "frappe.desk.doctype.kanban_board.kanban_board.";
 
+	// Conversation cache — invalidated after 30 s or on Conversation realtime event
+	const _convCache = { lastMessage: null, unread: null, ts: 0 };
+	const CONV_TTL_MS = 30_000;
+	function _convCacheValid() { return Date.now() - _convCache.ts < CONV_TTL_MS; }
+	function _invalidateConvCache() { _convCache.ts = 0; }
+
 	let columns_unwatcher = null;
 	let store;
 	let mouseLeaveTimeout;
@@ -918,6 +924,10 @@ const columnsByMechanic = {
 		frappe.realtime.on('kanban_project_refresh', () => {
 			make_dom(true)
 		});
+		// Invalidate conversation cache when any Conversation doc changes
+		frappe.realtime.on("list_update", (data) => {
+			if (data?.doctype === "Conversation") _invalidateConvCache();
+		});
 
 		function init() {
 			make_dom();
@@ -962,14 +972,15 @@ const columnsByMechanic = {
 					if (Math.abs(scrollTop) > Math.abs(scrollLeft)) {
 						if (scrollTop + clientHeight >= scrollHeight) {
 							const start = store.state.cards.filter((el) => el.column === column.title).length
+							loading = true;
 							frappe.call({
 								method: 'frappe.desk.reportview.get',
 								args: {
 									"doctype": "Project",
-									"fields": ["*"],
+									"fields": store.state.cur_list.fields,
 									"filters": [['status', '=', column.title]],
 									"start": start,
-									"page_length": 10,
+									"page_length": 25,
 									"view": "List",
 									"group_by": "`tabProject`.`name`",
 									"with_comment_count": 1
@@ -984,8 +995,7 @@ const columnsByMechanic = {
 								const newTitle = column.title + " (" + (newTotal) + ")";
 								const newKanbanTitle = $("<span class=\"kanban-title ellipsis\" title=\"" + newTitle + "\">" + newTitle + "</span>");
 								self.$kanban_column.find(".kanban-column-title").append(newKanbanTitle);
-							})
-							loading = true;
+							}).catch(() => { loading = false; })
 						}
 					}
 				})
@@ -995,10 +1005,10 @@ const columnsByMechanic = {
 					method: 'frappe.desk.reportview.get',
 					args: {
 						"doctype": "Project",
-						"fields": ["*"],
+						"fields": store.state.cur_list.fields,
 						"filters": [['status', '=', column.title]],
 						"start": 0,
-						"page_length": 10,
+						"page_length": 25,
 						"view": "List",
 						"group_by": "`tabProject`.`name`",
 						"with_comment_count": 1
@@ -1027,24 +1037,28 @@ const columnsByMechanic = {
 
 			var filtered_cards_names = filtered_cards.map((card) => card.name);
 
+			const fragment = document.createDocumentFragment();
+			const $fragment = $(fragment);
+
 			var order = column.order;
 			if (order && !store.state.done_statuses.includes(column.title)) {
 				order = JSON.parse(order);
 				// new cards
 				filtered_cards.forEach(function (card) {
 					if (order.indexOf(card.name) === -1) {
-						frappe.views.KanbanBoardCard(card, self.$kanban_cards);
+						frappe.views.KanbanBoardCard(card, $fragment);
 					}
 				});
 				order.forEach(function (name) {
 					if (!filtered_cards_names.includes(name)) return;
-					frappe.views.KanbanBoardCard(get_card(name), self.$kanban_cards);
+					frappe.views.KanbanBoardCard(get_card(name), $fragment);
 				});
 			} else {
-				filtered_cards.map(function (card) {
-					frappe.views.KanbanBoardCard(card, self.$kanban_cards);
+				filtered_cards.forEach(function (card) {
+					frappe.views.KanbanBoardCard(card, $fragment);
 				});
 			}
+			self.$kanban_cards.append(fragment);
 		}
 
 		function setup_sortable() {
@@ -1763,7 +1777,10 @@ const columnsByMechanic = {
 		return { message };
 	}
 
+	const _satSunCache = new Map();
 	function satuday_sunday_combined(startDate, endDate) {
+		const key = String(startDate) + "|" + (endDate instanceof Date ? endDate.toDateString() : String(endDate));
+		if (_satSunCache.has(key)) return _satSunCache.get(key);
 		const isWeekend = date => date.getDay() % 6 === 0;
 		const isWeekday = date => date.getDay() >= 1 && date.getDay() <= 5;
 		let dayDifference = 0;
@@ -1783,6 +1800,7 @@ const columnsByMechanic = {
 		if (hasWeekend) {
 			dayDifference--;
 		}
+		_satSunCache.set(key, dayDifference);
 		return dayDifference;
 	}
 
@@ -1797,23 +1815,34 @@ const columnsByMechanic = {
 	}
 
 	async function last_message_from_customer(phone_numbers) {
+		if (_convCacheValid() && _convCache.lastMessage) {
+			return _convCache.lastMessage;
+		}
 		const conversations = await frappe.db.get_list('Conversation', {
 			filters: {
-				from: ["in", phone_numbers],
+				from: ["in", [...phone_numbers]],
 				last_message_from_customer: 1
 			},
 			fields: ["from"],
-		})
-
-		return conversations.map(conversation => conversation.from)
+		});
+		const result = conversations.map(conversation => conversation.from);
+		_convCache.lastMessage = result;
+		_convCache.ts = Date.now();
+		return result;
 	}
 
 	async function getUnreadConversations() {
+		if (_convCacheValid() && _convCache.unread) {
+			unread_conversations = _convCache.unread;
+			return;
+		}
 		unread_conversations = await frappe.db.get_list('Conversation', {
 			filters: { seen: 0 },
 			fields: ["name", "from"],
 			ip: 1
-		})
+		});
+		_convCache.unread = unread_conversations;
+		_convCache.ts = Date.now();
 	}
 
 	function prepare_columns(columns) {

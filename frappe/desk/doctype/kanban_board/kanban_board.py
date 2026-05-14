@@ -474,6 +474,7 @@ def refresh_kanban_project_order(board_name):
 
 @frappe.whitelist()
 def kanban_project_refresh(name:str):
+    frappe.cache().delete_value(_QUEUE_CACHE_KEY)
     sleep(2)
     frappe.publish_realtime("kanban_project_refresh")
     frappe.publish_realtime("list_update",{"doctype":"Project", "user":"support@tvsgroup.nl", "name": name})
@@ -495,8 +496,15 @@ def force_refresh_kanban_order(board_name):
 
 
 # ==================== CUSTOM FUNCTIONS ====================
+_QUEUE_CACHE_KEY = "kanban_queue_order"
+_QUEUE_CACHE_TTL = 5  # seconds
+
 def get_projects_ordered_by_queue_position_and_appointment_date():
     """Get projects ordered by queue_position (DECIMAL) and appointment_date (NULL al final)."""
+    cached = frappe.cache().get_value(_QUEUE_CACHE_KEY)
+    if cached is not None:
+        return cached
+
     try:
         queue_cast = (
             "CASE "
@@ -519,10 +527,10 @@ def get_projects_ordered_by_queue_position_and_appointment_date():
             filters={
                 "status": ["in", ["In queue", "In parking"]],
             },
-            # Fechas nulas al final; luego fecha ascendente
             order_by="queue_position_num ASC, COALESCE(appointment_date, '9999-12-31') ASC",
         )
 
+        frappe.cache().set_value(_QUEUE_CACHE_KEY, projects, expires_in_sec=_QUEUE_CACHE_TTL)
         return projects
 
     except Exception as e:
