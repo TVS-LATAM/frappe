@@ -977,7 +977,7 @@ const columnsByMechanic = {
 								method: 'frappe.desk.reportview.get',
 								args: {
 									"doctype": "Project",
-									"fields": store.state.cur_list.fields,
+									"fields": store.state.cur_list.fields.map(f => Array.isArray(f) ? f[0] : f),
 									"filters": [['status', '=', column.title]],
 									"start": start,
 									"page_length": 25,

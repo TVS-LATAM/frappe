@@ -179,7 +179,7 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 				method: 'frappe.desk.reportview.get',
 				args: {
 					"doctype": this.doctype,
-					"fields": this.fields,
+					"fields": this.fields.map(f => Array.isArray(f) ? f[0] : f),
 					"filters": [['name', 'in', names]],
 					"start": 0,
 					"page_length": names.length,
