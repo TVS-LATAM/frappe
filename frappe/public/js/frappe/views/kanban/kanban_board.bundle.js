@@ -1125,6 +1125,19 @@ const columnsByMechanic = {
 								validationPassed = false;
 							});
 					}
+
+					// Queue notification confirmation for done statuses
+					if (validationPassed && ["Completed", "Cancelled", "No response from customer"].includes(args.to_colname)) {
+						await validate_queue_notification(args)
+							.then(res => {
+								console.log(`Queue notification confirmed for: ${args.name}`);
+							})
+							.catch(error => {
+								console.log(`Queue notification cancelled: ${error || 'User cancelled'}`);
+								validationPassed = false;
+							});
+					}
+
 					// Remote diagnose to Completed special case
 					if (validationPassed && args.from_colname === "In diagnosis" && args.to_colname === "After diagnosis") {
 						showSentMessageAfterRemoteDiagnoseDialog(args.name);
@@ -1138,9 +1151,8 @@ const columnsByMechanic = {
 					if (validationPassed) {
 						store.dispatch("update_order_for_single_card", args);
 					} else {
-						// Revert the UI change if validation failed
-						// This will be handled by the database update in the validation functions
 						console.log(`Card movement prevented due to failed validation: ${args.name}`);
+						store.state.cur_list.refresh();
 					}
 				},
 				onAdd: function () { },
@@ -2095,6 +2107,40 @@ const columnsByMechanic = {
 
 			showLoanCarNotPaidAlert(loan_car[0], reject)
 		})
+	}
+
+	function validate_queue_notification(args) {
+		return new Promise((resolve, reject) => {
+			showQueueNotificationConfirmDialog(args, resolve, reject);
+		});
+	}
+
+	function showQueueNotificationConfirmDialog(args, resolve, reject) {
+		const dialog = new frappe.ui.Dialog({
+			title: 'Confirm',
+			fields: [
+				{
+					fieldtype: 'HTML',
+					options: `<p>Moving this project to <strong>${args.to_colname}</strong> will update queue positions and customers in the queue will be notified. Are you sure you want to proceed?</p>`
+				}
+			],
+			primary_action_label: 'Confirm',
+			primary_action: function () {
+				dialog.hide();
+				resolve();
+			},
+			secondary_action_label: 'Cancel',
+			secondary_action: function () {
+				frappe.db.set_value("Project", args.name, "status", args.from_colname);
+				reject();
+				dialog.hide();
+			}
+		});
+
+		dialog.$wrapper.find('.modal-header .modal-actions').hide();
+		dialog.$wrapper.modal({ backdrop: 'static', keyboard: false });
+
+		dialog.show();
 	}
 
 	function showConfirmationDialog(args, quotations, incomplete_requirements, resolve, reject) {
