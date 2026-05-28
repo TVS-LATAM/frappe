@@ -660,10 +660,13 @@ async function insertFreezeQueuePosition(context) {
 			}
 		}
 
-		function makeToggle(id, text, checked) {
+		function makeToggle(id, text, checked, tooltip) {
 			const label = document.createElement('label');
 			label.className = 'kanban-toggle-switch';
 			label.id = id;
+			if (tooltip) {
+				label.setAttribute('title', tooltip);
+			}
 			const input = document.createElement('input');
 			input.type = 'checkbox';
 			if (checked) input.checked = true;
@@ -717,14 +720,14 @@ async function insertFreezeQueuePosition(context) {
 		const toggleGroup = document.createElement('div');
 		toggleGroup.className = 'kanban-toolbar-toggles';
 
-		const { label: previewLabel, input: previewInput } = makeToggle('show-preview', 'Preview', context.board.show_preview_card);
+		const { label: previewLabel, input: previewInput } = makeToggle('show-preview', 'Preview', context.board.show_preview_card, 'Show or hide card previews (images/details) on the Kanban board');
 		previewInput.addEventListener('change', (event) => {
 			const isChecked = event.target.checked;
 			frappe.db.set_value('Kanban Board', context.board.name, 'show_preview_card', Number(isChecked))
 			window.location.reload()
 		})
 
-		const { label: freezeLabel, input: freezeInput } = makeToggle('queue-freeze', 'Freeze queue', auto_move_paused);
+		const { label: freezeLabel, input: freezeInput } = makeToggle('queue-freeze', 'Freeze queue', auto_move_paused, 'Prevent queue cards from moving automatically when marked as completed');
 		freezeInput.addEventListener('change', (event) => {
 			const isChecked = event.target.checked;
 			if (isChecked) {
@@ -811,14 +814,16 @@ function showDeactivateFreezeDialog(input) {
 			}
 		],
 		primary_action_label: 'YES',
-		primary_action: function () {
+		primary_action: async function () {
 			dialog.hide();
-			frappe.db.set_value('Queue Settings', 'Queue Settings', 'auto_move_paused', 0).then(() => {
+			frappe.db.set_value('Queue Settings', 'Queue Settings', 'auto_move_paused', 0).then(async () => {
 				frappe.show_alert({
 					message: __('Deactivating freeze and reordering queue...'),
 					indicator: 'blue'
 				});
-				fetch('/queue/reorder', {
+				const { aws_url } = await frappe.db.get_doc('Queue Settings');
+				const endpoint = aws_url ? (aws_url.endsWith('/') ? aws_url + 'queue/reorder' : aws_url + '/queue/reorder') : '/queue/reorder';
+				fetch(endpoint, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
