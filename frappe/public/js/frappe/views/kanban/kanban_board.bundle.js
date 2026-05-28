@@ -935,7 +935,10 @@ const columnsByMechanic = {
 			make_cards();
 			store.watch((state, getters) => {
 				return state.cards;
-			}, make_cards);
+			}, () => {
+				make_cards();
+				refresh_column_counter();
+			});
 			bind_add_card();
 			bind_options();
 			get_and_set_columns_titles_with_counter()
@@ -951,6 +954,15 @@ const columnsByMechanic = {
 			_title = _title + " (" + get_total_cards() + ")"
 			store.state.kanban_columns.push(_title)
 			self.$kanban_column.find(".kanban-column-title").html("<span class=\"kanban-title ellipsis\" title=\"" + _title + "\">" + _title + "</span>");
+		}
+
+		function refresh_column_counter() {
+			if (store.state.doctype !== "Project") return;
+			const $titleArea = self.$kanban_column.find(".kanban-column-title");
+			if (!$titleArea.length) return;
+			const count = store.state.cards.filter((c) => c.column === column.title).length;
+			const newTitle = column.title + " (" + count + ")";
+			$titleArea.html("<span class=\"kanban-title ellipsis\" title=\"" + newTitle + "\">" + newTitle + "</span>");
 		}
 
 		let loading = false
