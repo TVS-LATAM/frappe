@@ -220,9 +220,9 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 		const isJuniorMechanic = await erpnext.utils.isJuniorMechanic(this.frm);
 		const isSeniorMechanic = await erpnext.utils.isSeniorMechanic(this.frm);
 
-		if(!isWorkshopViewer && !isMechanic && !isJuniorMechanic && !isSeniorMechanic){
+		if (!isWorkshopViewer && !isMechanic && !isJuniorMechanic && !isSeniorMechanic) {
 			insertFreezeQueuePosition(this)
-		}else{
+		} else {
 			const sidebar = $(".layout-side-section");
 			if (sidebar.is(':visible')) {
 				sidebar.hide();
@@ -242,23 +242,23 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 			this.page.clear_indicator();
 		}
 
-    let filters = this.get_call_args().args.filters
-    const filters_fields = document.querySelectorAll('.input-with-feedback:not([type="checkbox"])');
-    const defaultBorder = 'none';
-    const highlightBorder = '2px solid red';
+		let filters = this.get_call_args().args.filters
+		const filters_fields = document.querySelectorAll('.input-with-feedback:not([type="checkbox"])');
+		const defaultBorder = 'none';
+		const highlightBorder = '2px solid red';
 
-    filters_fields.forEach(filter => {
-     filter.style.border = defaultBorder;
+		filters_fields.forEach(filter => {
+			filter.style.border = defaultBorder;
 
-     if(filters.length){
-       const fieldName = filter.getAttribute('data-fieldname');
-       const hasValue = filters.some(([_, name]) => name === fieldName);
+			if (filters.length) {
+				const fieldName = filter.getAttribute('data-fieldname');
+				const hasValue = filters.some(([_, name]) => name === fieldName);
 
-       if (hasValue) {
-         filter.style.border = highlightBorder;
-       }
-     }
-   })
+				if (hasValue) {
+					filter.style.border = highlightBorder;
+				}
+			}
+		})
 
 	}
 
@@ -391,9 +391,8 @@ frappe.views.KanbanView.get_kanbans = function (doctype) {
 	return get_kanban_boards().then((kanban_boards) => {
 		if (kanban_boards) {
 			kanban_boards.forEach((board) => {
-				let route = `/app/${frappe.router.slug(board.reference_doctype)}/view/kanban/${
-					board.name
-				}`;
+				let route = `/app/${frappe.router.slug(board.reference_doctype)}/view/kanban/${board.name
+					}`;
 				kanbans.push({ name: board.name, route: route });
 			});
 		}
@@ -661,10 +660,13 @@ async function insertFreezeQueuePosition(context) {
 			}
 		}
 
-		function makeToggle(id, text, checked) {
+		function makeToggle(id, text, checked, tooltip) {
 			const label = document.createElement('label');
 			label.className = 'kanban-toggle-switch';
 			label.id = id;
+			if (tooltip) {
+				label.setAttribute('title', tooltip);
+			}
 			const input = document.createElement('input');
 			input.type = 'checkbox';
 			if (checked) input.checked = true;
@@ -718,22 +720,23 @@ async function insertFreezeQueuePosition(context) {
 		const toggleGroup = document.createElement('div');
 		toggleGroup.className = 'kanban-toolbar-toggles';
 
-		const { label: previewLabel, input: previewInput } = makeToggle('show-preview', 'Preview', context.board.show_preview_card);
+		const { label: previewLabel, input: previewInput } = makeToggle('show-preview', 'Preview', context.board.show_preview_card, 'Show or hide card previews (images/details) on the Kanban board');
 		previewInput.addEventListener('change', (event) => {
 			const isChecked = event.target.checked;
 			frappe.db.set_value('Kanban Board', context.board.name, 'show_preview_card', Number(isChecked))
 			window.location.reload()
 		})
 
-		const { label: freezeLabel, input: freezeInput } = makeToggle('queue-freeze', 'Freeze queue', auto_move_paused);
+		const { label: freezeLabel, input: freezeInput } = makeToggle('queue-freeze', 'Freeze queue', auto_move_paused, 'Prevent queue cards from moving automatically when marked as completed');
 		freezeInput.addEventListener('change', (event) => {
 			const isChecked = event.target.checked;
 			if (isChecked) {
 				showConfirmationDialog(freezeInput)
 				return
+			} else {
+				showDeactivateFreezeDialog(freezeInput);
+				return
 			}
-			frappe.db.set_value('Queue Settings', 'Queue Settings', 'auto_move_paused', Number(isChecked))
-			frappe.msgprint(__('Status updated successfully'));
 		})
 
 		toggleGroup.appendChild(previewLabel);
@@ -794,3 +797,86 @@ function showConfirmationDialog(input) {
 
 	dialog.show();
 }
+
+function showDeactivateFreezeDialog(input) {
+	const dialog = new frappe.ui.Dialog({
+		title: 'Reorder Queue',
+		fields: [
+			{
+				fieldtype: 'HTML',
+				options: `
+					<div style="font-size: 14px; line-height: 1.5; margin-bottom: 10px;">
+						<p style="font-size: 15px; font-weight: bold;">Do you want to reorder the queue?</p>
+						<p><strong>YES:</strong> The queue will be reorganized immediately.</p>
+						<p><strong>NO:</strong> The system will automatically check and organize it tonight (the daily automatic process).</p>
+					</div>
+				`
+			}
+		],
+		primary_action_label: 'YES',
+		primary_action: async function () {
+			dialog.hide();
+			frappe.db.set_value('Queue Settings', 'Queue Settings', 'auto_move_paused', 0).then(async () => {
+				frappe.show_alert({
+					message: __('Deactivating freeze and reordering queue...'),
+					indicator: 'blue'
+				});
+				const { aws_url } = await frappe.db.get_doc('Queue Settings');
+				const endpoint = aws_url ? (aws_url.endsWith('/') ? aws_url + 'queue/reorder' : aws_url + '/queue/reorder') : '/queue/reorder';
+				fetch(endpoint, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-Frappe-CSRF-Token': frappe.csrf_token || ''
+					}
+				})
+					.then(response => {
+						if (response.ok) {
+							frappe.show_alert({
+								message: __('Queue reordered successfully.'),
+								indicator: 'green'
+							});
+						} else {
+							frappe.show_alert({
+								message: __('Failed to reorder queue.'),
+								indicator: 'red'
+							});
+						}
+					})
+					.catch(err => {
+						console.error(err);
+						frappe.show_alert({
+							message: __('Error reordering queue.'),
+							indicator: 'red'
+						});
+					});
+			});
+		},
+		secondary_action_label: 'NO',
+		secondary_action: function () {
+			dialog.hide();
+			frappe.db.set_value('Queue Settings', 'Queue Settings', 'auto_move_paused', 0).then(() => {
+				frappe.show_alert({
+					message: __('Freeze queue deactivated. The system will automatically organize the queue tonight.'),
+					indicator: 'green'
+				});
+			});
+		}
+	});
+
+	// If the user cancels the modal through other means (like escape or clicking close icon), revert checkbox to checked.
+	dialog.on_cancel = function () {
+		input.checked = true;
+	};
+
+	// We can also add a subtle "Cancel" button to let the user keep the freeze active
+	dialog.add_custom_action('Cancel', function () {
+		input.checked = true;
+		dialog.hide();
+	});
+
+	dialog.$wrapper.find('.modal-header .modal-actions').hide();
+	dialog.$wrapper.modal({ backdrop: 'static', keyboard: false });
+	dialog.show();
+}
+
