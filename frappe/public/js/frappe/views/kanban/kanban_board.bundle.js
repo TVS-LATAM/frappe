@@ -1518,7 +1518,7 @@ const columnsByMechanic = {
 				return '<i class="fa fa-tint" style="color: dark-brown; font-size: 1rem; margin-left: 4px; vertical-align: middle;" title="Fast Lane"></i>';
 			}
 			// Default or HEAVY
-			return '<i class="fa fa-wrench" style="color: #d1d1d1; font-size: 1.1rem; margin-left: 4px; vertical-align: middle;" title="Heavy Lane"></i>';
+			return '<i class="fa fa-wrench" style="color: #4b5563; font-size: 1.1rem; margin-left: 4px; vertical-align: middle;" title="Heavy Lane"></i>';
 		}
 
 		function getSoftwareIcons() {
