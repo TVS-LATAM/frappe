@@ -1307,6 +1307,7 @@ const columnsByMechanic = {
 				opts.queue_position = card.doc.queue_position || "";
 			}
 			self.$card = $(frappe.render_template("kanban_card", opts)).appendTo(wrapper);
+			apply_job_type_color();
 			if (card.conversation) {
 				self.$card.find(".kanban-card.content").addClass("conversation-border");
 			}
@@ -1391,6 +1392,26 @@ const columnsByMechanic = {
 				</div>`
 				: "";
 
+		}
+
+		function apply_job_type_color() {
+			const job_type_colors = {
+				"Diagnose": "#bfdbfe",   // Light Blue
+				"Reparatie": "#fed7aa",  // Light Orange
+				"Oliewissel": "#fef08a", // Light Yellow
+				"Overig": "#ddd6fe",     // Light Purple
+				"Software": "#a5f3fc",   // Light Cyan
+				"Parts": "#a7f3d0",      // Light Green
+			};
+			const default_color = "#e5e7eb"; // Light Gray
+			const job_type = card.doc?.type_of_job;
+			const color = job_type_colors[job_type] || default_color;
+
+			const $title_area = self.$card.find(".kanban-card .kanban-title-area");
+			if ($title_area.length) {
+				$title_area[0].style.setProperty("background-color", color, "important");
+				$title_area.attr("title", job_type ? __("Type of job: {0}", [job_type]) : __("Type of job: Overig / Other"));
+			}
 		}
 
 		function render_card_meta() {
