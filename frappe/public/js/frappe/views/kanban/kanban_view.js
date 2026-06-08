@@ -622,6 +622,38 @@ async function insertFreezeQueuePosition(context) {
 			.kanban-queue-filter-select:hover {
 				background: rgba(0,0,0,0.05);
 			}
+			.kanban-color-legend {
+				display: inline-flex;
+				align-items: center;
+				flex-wrap: wrap;
+				gap: 4px 10px;
+				background: var(--bg-light-gray, #f4f5f6);
+				border: 1px solid var(--border-color, #e2e6e9);
+				border-radius: 6px;
+				padding: 3px 8px;
+			}
+			.kanban-color-legend-title {
+				font-size: 11px;
+				font-weight: 500;
+				color: var(--text-muted, #8d99a6);
+				white-space: nowrap;
+			}
+			.kanban-legend-item {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				font-size: 11px;
+				font-weight: 500;
+				color: var(--text-color, #333);
+				white-space: nowrap;
+			}
+			.kanban-legend-swatch {
+				width: 12px;
+				height: 12px;
+				border-radius: 3px;
+				border: 1px solid rgba(0,0,0,0.15);
+				flex-shrink: 0;
+			}
 			.kanban.queue-filter-position .kanban-column[data-column-value="In queue"] .kanban-card-wrapper:has(.circle-position.has-appointment) {
 				display: none;
 			}
@@ -742,8 +774,39 @@ async function insertFreezeQueuePosition(context) {
 		toggleGroup.appendChild(previewLabel);
 		toggleGroup.appendChild(freezeLabel);
 
+		// Color legend / glossary for the job-type card colors
+		const colorLegend = document.createElement('div');
+		colorLegend.className = 'kanban-color-legend';
+
+		const legendTitle = document.createElement('span');
+		legendTitle.className = 'kanban-color-legend-title';
+		legendTitle.textContent = 'Type of job:';
+		colorLegend.appendChild(legendTitle);
+
+		[
+			{ label: 'Diagnose', color: '#bfdbfe' },
+			{ label: 'Reparatie', color: '#fed7aa' },
+			{ label: 'Oliewissel', color: '#fef08a' },
+			{ label: 'Overig', color: '#ddd6fe' },
+			{ label: 'Software', color: '#a5f3fc' },
+			{ label: 'Parts', color: '#a7f3d0' },
+			{ label: 'Other', color: '#e5e7eb' },
+		].forEach(({ label, color }) => {
+			const item = document.createElement('span');
+			item.className = 'kanban-legend-item';
+			const swatch = document.createElement('span');
+			swatch.className = 'kanban-legend-swatch';
+			swatch.style.backgroundColor = color;
+			const text = document.createElement('span');
+			text.textContent = label;
+			item.appendChild(swatch);
+			item.appendChild(text);
+			colorLegend.appendChild(item);
+		});
+
 		controlsBar.appendChild(queueFilterGroup);
 		controlsBar.appendChild(toggleGroup);
+		controlsBar.appendChild(colorLegend);
 
 		// Insert the controls bar before the .kanban element so it sits between the header and the board
 		const kanbanEl = document.querySelector('.kanban');
