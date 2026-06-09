@@ -29,9 +29,9 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 	show() {
 		frappe.views.KanbanView.get_kanbans(this.doctype).then((kanbans) => {
 			if (!kanbans.length) {
-				return frappe.views.KanbanView.show_kanban_dialog(this.doctype, true);
+				return frappe.views.KanbanView.show_kanban_dialog(this.doctype);
 			} else if (kanbans.length && frappe.get_route().length !== 4) {
-				return frappe.views.KanbanView.show_kanban_dialog(this.doctype, true);
+				return frappe.views.KanbanView.show_kanban_dialog(this.doctype);
 			} else {
 				this.kanbans = kanbans;
 
@@ -832,7 +832,7 @@ function showConfirmationDialog(input) {
 		primary_action: function () {
 			dialog.hide();
 			frappe.db.set_value('Queue Settings', 'Queue Settings', 'auto_move_paused', 1).then(res => {
-				frappe.warn('Status updated successfully', 'Would you like to send a WhatsApp message to notify the clients in the queue?',
+				const warn_dialog = frappe.warn('Status updated successfully', 'Would you like to send a WhatsApp message to notify the clients in the queue?',
 					async () => {
 						const { aws_url } = await frappe.db.get_doc('Queue Settings')
 						return frappe.call({
@@ -846,9 +846,12 @@ function showConfirmationDialog(input) {
 					'Yes',
 					true // Sets dialog as minimizable
 				)
+				// frappe.warn's secondary button defaults to "Cancel"; relabel it to "No"
+				// for clarity since this is a Yes/No question.
+				warn_dialog.set_secondary_action_label(__('No'));
 			})
 		},
-		secondary_action_label: 'Cancel',
+		secondary_action_label: 'No',
 		secondary_action: function () {
 			input.checked = false
 			dialog.hide();

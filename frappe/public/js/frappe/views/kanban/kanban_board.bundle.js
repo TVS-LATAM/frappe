@@ -50,12 +50,14 @@ const columnsByMechanic = {
 (function () {
 	let kanban_size = KanbanSize.large
 	let same_status_2days = "2 days w/o update"
-	let quotations_draft = 0
+	let quotations_draft = []
 	let unread_conversations = []
 	var method_prefix = "frappe.desk.doctype.kanban_board.kanban_board.";
 
 	// Conversation cache — invalidated after 30 s or on Conversation realtime event
-	const _convCache = { lastMessage: null, unread: null, ts: 0 };
+	const _convCache = { lastMessage: null, lastMessageKey: null, unread: null, ts: 0 };
+	// One-time guard so the Conversation list_update listener is registered only once
+	let _convListenerSetup = false;
 	const CONV_TTL_MS = 30_000;
 	function _convCacheValid() { return Date.now() - _convCache.ts < CONV_TTL_MS; }
 	function _invalidateConvCache() { _convCache.ts = 0; }
@@ -76,7 +78,6 @@ const columnsByMechanic = {
 				cur_list: {},
 				empty_state: true,
 				done_statuses: ['Completed', 'In pause', 'Cancelled', 'Quality check approved', 'No response from customer', 'Invoice paid', 'Awaiting pickup'],
-				kanban_columns: [],
 				kanban_size_range: null,
 				is_dragging: false
 			},
@@ -549,10 +550,13 @@ const columnsByMechanic = {
 			});
 
 			// 2. Sync Resize -> Tracker
-			// Use ResizeObserver for robust detection of wrapper changes
+			// Use ResizeObserver for robust detection of wrapper changes.
+			// Disconnect any observer from a previous init() to avoid leaking one per board re-render.
+			if (self._resizeObserver) self._resizeObserver.disconnect();
 			const resizeObserver = new ResizeObserver(() => {
 				updateTrackerDimensions();
 			});
+			self._resizeObserver = resizeObserver;
 			if (wrapperEl) {
 				resizeObserver.observe(wrapperEl);
 			}
@@ -919,15 +923,20 @@ const columnsByMechanic = {
 	frappe.views.KanbanBoardColumn = function (column, wrapper, board_perms, cards_by_columns = []) {
 		var self = {};
 		var filtered_cards = [];
-		frappe.realtime.doctype_subscribe(this.doctype);
+		frappe.realtime.doctype_subscribe(store.state.doctype);
 		frappe.realtime.off("kanban_project_refresh");
 		frappe.realtime.on('kanban_project_refresh', () => {
 			make_dom(true)
 		});
-		// Invalidate conversation cache when any Conversation doc changes
-		frappe.realtime.on("list_update", (data) => {
-			if (data?.doctype === "Conversation") _invalidateConvCache();
-		});
+		// Invalidate conversation cache when any Conversation doc changes.
+		// Register only once — KanbanBoardColumn runs per column, so an unguarded
+		// .on() here would accumulate a listener for every column and re-render.
+		if (!_convListenerSetup) {
+			frappe.realtime.on("list_update", (data) => {
+				if (data?.doctype === "Conversation") _invalidateConvCache();
+			});
+			_convListenerSetup = true;
+		}
 
 		function init() {
 			make_dom();
@@ -952,7 +961,6 @@ const columnsByMechanic = {
 		function get_and_set_columns_titles_with_counter() {
 			let _title = self.$kanban_column.find(".kanban-column-title")[0].outerText
 			_title = _title + " (" + get_total_cards() + ")"
-			store.state.kanban_columns.push(_title)
 			self.$kanban_column.find(".kanban-column-title").html("<span class=\"kanban-title ellipsis\" title=\"" + _title + "\">" + _title + "</span>");
 		}
 
@@ -1089,9 +1097,6 @@ const columnsByMechanic = {
 					wrapper.find(".kanban-card.add-card").fadeOut(200, function () {
 						wrapper.find(".kanban-cards").height("100vh");
 					});
-					// Guardar la posición del scroll de la columna de origen antes de mover la tarjeta
-					const fromColumn = $(e.from).parents(".kanban-column");
-					scrollPos = window.screenX
 				},
 				onEnd: async function (e) {
 					store.commit('set_dragging', false);
@@ -1515,7 +1520,7 @@ const columnsByMechanic = {
 
 		function getLaneIcon() {
 			if (card.doc.lane === "FAST") {
-				return '<i class="fa fa-tint" style="color: dark-brown; font-size: 1rem; margin-left: 4px; vertical-align: middle;" title="Fast Lane"></i>';
+				return '<i class="fa fa-tint" style="color: #8B4513; font-size: 1rem; margin-left: 4px; vertical-align: middle;" title="Fast Lane"></i>';
 			}
 			// Default or HEAVY
 			return '<i class="fa fa-wrench" style="color: #4b5563; font-size: 1.1rem; margin-left: 4px; vertical-align: middle;" title="Heavy Lane"></i>';
@@ -1791,7 +1796,7 @@ const columnsByMechanic = {
 		const nowDate = new Date();
 		const modifiedDate = new Date(card.status_modified);
 		const dayDifference = satuday_sunday_combined(modifiedDate, nowDate);
-		const in_parking = card.status === 'In parking' && Number(card.queue_position) <= 5 && satuday_sunday_combined(card.parking_date, nowDate) >= 2;;
+		const in_parking = card.status === 'In parking' && Number(card.queue_position) <= 5 && satuday_sunday_combined(card.parking_date, nowDate) >= 2;
 		const quotation = card.status === 'Quoted' && quotations_draft.length && quotations_draft.find(quotation => quotation.parent == card.name);
 		const hass_passed_one_day_quotation = quotation && has_passed_one_day(quotation.modified);
 
@@ -1848,7 +1853,10 @@ const columnsByMechanic = {
 	}
 
 	async function last_message_from_customer(phone_numbers) {
-		if (_convCacheValid() && _convCache.lastMessage) {
+		// Key the cache by the actual phone-number set; otherwise a later call with a
+		// different set would receive the previous call's result within the TTL window.
+		const key = [...phone_numbers].sort().join(",");
+		if (_convCacheValid() && _convCache.lastMessageKey === key && _convCache.lastMessage) {
 			return _convCache.lastMessage;
 		}
 		const conversations = await frappe.db.get_list('Conversation', {
@@ -1860,6 +1868,7 @@ const columnsByMechanic = {
 		});
 		const result = conversations.map(conversation => conversation.from);
 		_convCache.lastMessage = result;
+		_convCache.lastMessageKey = key;
 		_convCache.ts = Date.now();
 		return result;
 	}
@@ -1872,7 +1881,6 @@ const columnsByMechanic = {
 		unread_conversations = await frappe.db.get_list('Conversation', {
 			filters: { seen: 0 },
 			fields: ["name", "from"],
-			ip: 1
 		});
 		_convCache.unread = unread_conversations;
 		_convCache.ts = Date.now();
@@ -2031,8 +2039,10 @@ const columnsByMechanic = {
 		store.dispatch("update_kanban_size_range", value)
 
 		const zoomSlider = document.getElementById('zoom-slider');
-		const initialZoomLevel = Object.keys(zoomLevels).find(key => zoomLevels[key] === value);
-		zoomSlider.value = initialZoomLevel;
+		if (zoomSlider) {
+			const initialZoomLevel = Object.keys(zoomLevels).find(key => zoomLevels[key] === value);
+			zoomSlider.value = initialZoomLevel;
+		}
 
 		return value
 	}
@@ -2042,7 +2052,8 @@ const columnsByMechanic = {
 		const zoomIn = document.getElementById('zoom-icon-in');
 		const zoomOut = document.getElementById('zoom-icon-out');
 
-		setTimeout(() => { }, 1000)
+		if (!zoomSlider || !zoomIn || !zoomOut) return;
+
 		zoomIn.addEventListener('click', () => {
 			if (zoomSlider.value < 3) {
 				zoomSlider.value = parseInt(zoomSlider.value) + 1;
@@ -2242,7 +2253,7 @@ const columnsByMechanic = {
 				fieldtype: 'HTML',
 				options: `
 					<ul style="border-bottom: 1px solid black;padding-bottom:1rem;">
-					${quotations.map(quotation => `<li><strong>Quotation:</strong> <a href="/app/quotation/${quotation.name}" target="__blank">${quotation.name}</a>, <strong>Status:</strong> ${quotation.status}.</li>\n`)}
+					${quotations.map(quotation => `<li><strong>Quotation:</strong> <a href="/app/quotation/${quotation.name}" target="_blank">${quotation.name}</a>, <strong>Status:</strong> ${quotation.status}.</li>`).join("")}
 					</ul>
 				`
 			}
@@ -2256,7 +2267,7 @@ const columnsByMechanic = {
 				fieldtype: 'HTML',
 				options: `
 					<ul>
-					${incomplete_requirements.map(item => `<li><strong>Requirement:</strong> ${item.requirement}</li>\n`)}
+					${incomplete_requirements.map(item => `<li><strong>Requirement:</strong> ${item.requirement}</li>`).join("")}
 					</ul>
 				`
 			},
@@ -2316,7 +2327,7 @@ const columnsByMechanic = {
 			fields: [
 				{
 					fieldtype: 'HTML',
-					options: `<p>Loan car: <a href="/app/loan-car/${loan_car.name}" target="__blank">${loan_car.name}</a> is is status: ${loan_car.status}</p> `
+					options: `<p>Loan car: <a href="/app/loan-car/${loan_car.name}" target="_blank">${loan_car.name}</a> is in status: ${loan_car.status}</p> `
 				},
 			],
 			primary_action_label: 'Ok',
