@@ -3,6 +3,11 @@ import CardPreviewSettings from "./card_preview_settings";
 
 frappe.provide("frappe.views");
 
+// Name of the Project kanban board that represents the workshop floor. Workshop-only
+// UI (queue filter, preview/colour controls, freeze-queue toggle, lane icon) is gated
+// on this so it doesn't leak into other Project boards (e.g. "Parts", "Remote Diagnose").
+const WORKSHOP_KANBAN_BOARD = "workshop";
+
 frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 	static no_sidebar = true;
 
@@ -516,6 +521,40 @@ frappe.views.KanbanView.show_kanban_dialog = function (doctype) {
 
 async function insertFreezeQueuePosition(context) {
 	if (context.doctype !== 'Project') return;
+	// Scope DOM lookups to the current board's page wrapper. Frappe caches each
+	// opened kanban page (hidden) in the DOM, so document-wide lookups can hit a
+	// stale board and break board switching / the queue filter.
+	const root = context.page?.wrapper?.[0] || document;
+
+	// The "Filters" button toggles the collapsible filter area (which holds the
+	// "Select Kanban" switcher). page.js collapses that area for EVERY Project
+	// kanban URL, so the button must exist on every Project board — otherwise the
+	// user can't reopen filters to switch boards.
+	const addFiltersButton = () => {
+		const containers = root.querySelectorAll('div.page-head.flex > div > div > div.flex.col.page-actions.justify-content-end');
+		for (const container of containers) {
+			if (container.querySelector('#btn_collapse_filters_area')) continue;
+			const custom_button_filter = document.createElement('button');
+			custom_button_filter.setAttribute('id', 'btn_collapse_filters_area');
+			custom_button_filter.classList.add('btn', 'btn-primary', 'btn-sm');
+			custom_button_filter.setAttribute('type', 'button');
+			custom_button_filter.setAttribute('data-toggle', 'collapse');
+			custom_button_filter.setAttribute('data-target', '#collapse_filters_area');
+			custom_button_filter.setAttribute('aria-expanded', 'false');
+			custom_button_filter.setAttribute('aria-controls', 'collapse_filters_area');
+			custom_button_filter.innerText = 'Filters';
+			container.append(custom_button_filter);
+		}
+	};
+
+	// The queue filter, preview/colour controls and freeze-queue toggle are only
+	// meaningful on the workshop kanban (the Project "status" board). Other Project
+	// boards (e.g. "Parts", "Remote Diagnose") get only the Filters button.
+	if (context.board_name !== WORKSHOP_KANBAN_BOARD) {
+		setTimeout(addFiltersButton, 1500);
+		return;
+	}
+
 	const { auto_move_paused } = await frappe.db.get_doc('Queue Settings')
 
 	if (!document.getElementById('kanban-toolbar-toggle-style')) {
@@ -665,7 +704,7 @@ async function insertFreezeQueuePosition(context) {
 	}
 
 	function applyQueueColumnFilter(value) {
-		const kanban = document.querySelector('.kanban');
+		const kanban = root.querySelector('.kanban');
 		if (!kanban) return;
 		kanban.classList.remove('queue-filter-position', 'queue-filter-appointment');
 		if (value === 'position') kanban.classList.add('queue-filter-position');
@@ -673,24 +712,15 @@ async function insertFreezeQueuePosition(context) {
 	}
 
 	setTimeout(() => {
-		if (document.getElementById('kanban-controls-bar')) return;
+		// `root` (scoped to this board's page wrapper) guards against the cached
+		// pages of other boards: a global lookup would find a leftover controls
+		// bar / Filters button from another board and bail out here, leaving this
+		// board without its Filters button — which is what lets the user switch
+		// kanban boards again.
+		// Always keep the Filters button in the page-actions area.
+		addFiltersButton();
 
-		// Keep the Filters button in the page-actions area
-		const containers = document.querySelectorAll('div[id*="Kanban"] div.page-head.flex > div > div > div.flex.col.page-actions.justify-content-end')
-		for (const container of containers) {
-			if (!container.querySelector('#btn_collapse_filters_area')) {
-				const custom_button_filter = document.createElement('button');
-				custom_button_filter.setAttribute('id', 'btn_collapse_filters_area');
-				custom_button_filter.classList.add('btn', 'btn-primary', 'btn-sm');
-				custom_button_filter.setAttribute('type', 'button');
-				custom_button_filter.setAttribute('data-toggle', 'collapse');
-				custom_button_filter.setAttribute('data-target', '#collapse_filters_area');
-				custom_button_filter.setAttribute('aria-expanded', 'false');
-				custom_button_filter.setAttribute('aria-controls', 'collapse_filters_area');
-				custom_button_filter.innerText = 'Filters';
-				container.append(custom_button_filter);
-			}
-		}
+		if (root.querySelector('#kanban-controls-bar')) return;
 
 		function makeToggle(id, text, checked, tooltip) {
 			const label = document.createElement('label');
@@ -809,7 +839,7 @@ async function insertFreezeQueuePosition(context) {
 		controlsBar.appendChild(colorLegend);
 
 		// Insert the controls bar before the .kanban element so it sits between the header and the board
-		const kanbanEl = document.querySelector('.kanban');
+		const kanbanEl = root.querySelector('.kanban');
 		if (kanbanEl) {
 			kanbanEl.parentNode.insertBefore(controlsBar, kanbanEl);
 		}
