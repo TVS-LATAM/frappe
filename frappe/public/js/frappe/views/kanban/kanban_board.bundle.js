@@ -1521,7 +1521,7 @@ const columnsByMechanic = {
 		function getLaneIcon() {
 			// Lane (fast/heavy) is a workshop-floor concept; only show it on the
 			// workshop kanban, not on other Project boards (Parts, Remote Diagnose, ...).
-			if (cur_list.board_name !== "workshop") return "";
+			if (!frappe.views.is_workshop_kanban(cur_list.board_name)) return "";
 			if (card.doc.lane === "FAST") {
 				return '<i class="fa fa-tint" style="color: #8B4513; font-size: 1rem; margin-left: 4px; vertical-align: middle;" title="Fast Lane"></i>';
 			}

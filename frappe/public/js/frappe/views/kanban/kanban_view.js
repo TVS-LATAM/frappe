@@ -8,6 +8,11 @@ frappe.provide("frappe.views");
 // on this so it doesn't leak into other Project boards (e.g. "Parts", "Remote Diagnose").
 const WORKSHOP_KANBAN_BOARD = "workshop";
 
+// Match the workshop board regardless of casing/whitespace ("Workshop", "WORKSHOP", ...).
+frappe.views.is_workshop_kanban = function (board_name) {
+	return (board_name || "").trim().toLowerCase() === WORKSHOP_KANBAN_BOARD;
+};
+
 frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 	static no_sidebar = true;
 
@@ -550,7 +555,7 @@ async function insertFreezeQueuePosition(context) {
 	// The queue filter, preview/colour controls and freeze-queue toggle are only
 	// meaningful on the workshop kanban (the Project "status" board). Other Project
 	// boards (e.g. "Parts", "Remote Diagnose") get only the Filters button.
-	if (context.board_name !== WORKSHOP_KANBAN_BOARD) {
+	if (!frappe.views.is_workshop_kanban(context.board_name)) {
 		setTimeout(addFiltersButton, 1500);
 		return;
 	}
