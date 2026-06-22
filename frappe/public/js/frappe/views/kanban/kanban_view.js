@@ -20,12 +20,25 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 		const route = frappe.get_route();
 		if (route.length === 3) {
 			const doctype = route[1];
-			const user_settings = frappe.get_user_settings(doctype)["Kanban"] || {};
-			if (!user_settings.last_kanban_board) {
+			// Prefer the last kanban this browser was on so normal back/forward
+			// navigation returns the user to where they were, falling back to the
+			// server-side last_kanban_board only if nothing is stored locally.
+			let last_board = null;
+			try {
+				const stored = JSON.parse(localStorage.getItem(`last_kanban_route:${doctype}`));
+				last_board = stored && stored.board;
+			} catch (e) {
+				last_board = null;
+			}
+			if (!last_board) {
+				const user_settings = frappe.get_user_settings(doctype)["Kanban"] || {};
+				last_board = user_settings.last_kanban_board;
+			}
+			if (!last_board) {
 				return new frappe.views.KanbanView({ doctype: doctype });
 			}
 
-			route.push(user_settings.last_kanban_board);
+			route.push(last_board);
 			frappe.set_route(route);
 			return true;
 		}
@@ -225,6 +238,17 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 		this.save_view_user_settings({
 			last_kanban_board: this.board_name,
 		});
+		// Persist the kanban the user is currently on, per browser, so that returning
+		// from a Job Card / Appointment lands them back here instead of being forced
+		// to their default kanban board.
+		try {
+			localStorage.setItem(
+				`last_kanban_route:${this.doctype}`,
+				JSON.stringify({ board: this.board_name })
+			);
+		} catch (e) {
+			// localStorage may be unavailable (e.g. private mode); ignore.
+		}
 		const isWorkshopViewer = await erpnext.utils.isWorkshopViewer(this.frm);
 		const isMechanic = await erpnext.utils.isMechanic(this.frm);
 		const isJuniorMechanic = await erpnext.utils.isJuniorMechanic(this.frm);

@@ -271,6 +271,22 @@ frappe.views.ListViewSelect = class ListViewSelect {
 				}
 			);
 		}
+		// Respect the kanban this browser was last on before forcing any default,
+		// so the user keeps their normal navigation instead of being redirected.
+		let last_board = null;
+		try {
+			const stored = JSON.parse(localStorage.getItem(`last_kanban_route:${this.doctype}`));
+			last_board = stored && stored.board;
+		} catch (e) {
+			last_board = null;
+		}
+		if (last_board) {
+			const last_board_exists = await frappe.db.exists("Kanban Board", last_board);
+			if (last_board_exists) {
+				frappe.set_route("list", this.doctype, "kanban", last_board);
+				return null;
+			}
+		}
 		const default_kanban =
 			await frappe.db.get_doc('User', frappe.user.name).then(user => user?.default_kanban)
 		if(default_kanban){
