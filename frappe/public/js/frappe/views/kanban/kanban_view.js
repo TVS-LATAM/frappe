@@ -158,13 +158,21 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 	}
 
 	get_board() {
-		return frappe.db.get_doc("Kanban Board", this.board_name).then((board) => {
-			this.board = board;
-			this.board.filters_array = JSON.parse(this.board.filters || "[]");
-			this.board.fields = JSON.parse(this.board.fields || "[]");
-			this.board.card_fields = JSON.parse(this.board.card_fields || "[]");
-			this.filters = this.board.filters_array;
-		});
+		// Use the custom endpoint so Project boards get their column order rebuilt
+		// from live queue_position / appointment_date on every load (frappe.db.get_doc
+		// would return the frozen, possibly stale, stored order).
+		return frappe
+			.call("frappe.desk.doctype.kanban_board.kanban_board.get_kanban_board", {
+				board_name: this.board_name,
+			})
+			.then((r) => {
+				const board = r.message;
+				this.board = board;
+				this.board.filters_array = JSON.parse(this.board.filters || "[]");
+				this.board.fields = JSON.parse(this.board.fields || "[]");
+				this.board.card_fields = JSON.parse(this.board.card_fields || "[]");
+				this.filters = this.board.filters_array;
+			});
 	}
 
 	setup_page() {
