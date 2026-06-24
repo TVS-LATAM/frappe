@@ -112,14 +112,22 @@ def get_count() -> int:
 
 
 def execute(doctype, *args, **kwargs):
-    if doctype == "Project":
-        fields = kwargs.get("fields") or []
+    fields = kwargs.get("fields") or []
 
+    # get_count / agregados / subconsultas (frappe.desk.reportview.get_count) pasan un
+    # count(...) como field o run=0. Inyectar columnas de orden ahí produce un agregado
+    # inválido (y rompe field.split() en prepare_args), así que solo personalizamos los
+    # fetch de datos reales de Project.
+    is_count_or_subquery = kwargs.get("run") == 0 or any(
+        "count(" in str(f).lower() or "total_count" in str(f).lower() for f in fields
+    )
+
+    if doctype == "Project" and not is_count_or_subquery:
         # Remplazar referencias directas al campo original, si vinieran
         if "`tabProject`.`queue_position`" in fields:
             fields.remove("`tabProject`.`queue_position`")
 
-        # Añadir el cast a DECIMAL con alias estable (si no está ya)
+        # Cast a DECIMAL con alias estable (si no está ya). Tiene CAST(...) -> contiene '('.
         cast_expr = """
             CASE
                 WHEN queue_position IS NULL OR queue_position = '' OR queue_position = 0 THEN 999999
@@ -136,20 +144,23 @@ def execute(doctype, *args, **kwargs):
         #   1) sin appointment_date  -> ordenados por queue_position ASC (sin posición, al final)
         #   2) con appointment_date  -> ordenados por appointment_date ASC
         #
-        # IMPORTANTE: el validador de Frappe (DatabaseQuery.validate_order_by_and_group_by)
-        # rechaza cualquier order_by con caracteres fuera de [a-z0-9-_ ,`'".()] (p. ej. '=' o
-        # un CASE). Por eso la lógica del orden va en los FIELDS como alias y el order_by SOLO
-        # referencia esos alias.
+        # Dos restricciones de Frappe condicionan cómo se escribe esto:
+        #  - validate_order_by_and_group_by rechaza order_by con caracteres fuera de
+        #    [a-z0-9-_ ,`'".()] (p. ej. '=' o un CASE) -> la lógica va en los FIELDS como
+        #    alias y el order_by SOLO referencia esos alias.
+        #  - prepare_args pasa un field "tal cual" solo si contiene '('; si no, intenta
+        #    `col AS alias` con field.split() (3 tokens) y revienta. Por eso cada CASE va
+        #    ENVUELTO en paréntesis.
         queue_case = (
             "CASE WHEN queue_position IS NULL OR queue_position = '' OR queue_position = 0 "
             "THEN 999999 ELSE CAST(queue_position AS DECIMAL(20,0)) END"
         )
         computed_fields = {
             # 0 = sin fecha (primer bloque), 1 = con fecha (segundo bloque)
-            "has_date": "CASE WHEN appointment_date IS NULL THEN 0 ELSE 1 END AS has_date",
+            "has_date": "(CASE WHEN appointment_date IS NULL THEN 0 ELSE 1 END) AS has_date",
             # queue_position solo ordena el bloque sin fecha; en el bloque con fecha es
             # constante (0) para no romper el orden por appointment_date.
-            "queue_block": f"CASE WHEN appointment_date IS NULL THEN {queue_case} ELSE 0 END AS queue_block",
+            "queue_block": f"(CASE WHEN appointment_date IS NULL THEN {queue_case} ELSE 0 END) AS queue_block",
         }
         for alias, expr in computed_fields.items():
             if not any(f" AS {alias}" in f or f.strip() == alias for f in fields):
