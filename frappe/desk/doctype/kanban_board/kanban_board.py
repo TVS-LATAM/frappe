@@ -500,17 +500,27 @@ _QUEUE_CACHE_KEY = "kanban_queue_order"
 _QUEUE_CACHE_TTL = 5  # seconds
 
 def get_projects_ordered_by_queue_position_and_appointment_date():
-    """Get projects ordered by queue_position (DECIMAL) and appointment_date (NULL al final)."""
+    """Get projects in two independent blocks, split by appointment_date presence:
+    first the ones WITHOUT appointment_date (ordered by queue_position DESC; rows without
+    queue_position last), then the ones WITH appointment_date (ordered by appointment_date ASC).
+    Each block uses its own sort key; one never breaks ties for the other."""
     cached = frappe.cache().get_value(_QUEUE_CACHE_KEY)
     if cached is not None:
         return cached
 
     try:
-        queue_cast = (
-            "CASE "
-            "WHEN queue_position IS NULL OR queue_position = '' OR queue_position = 0 THEN 999999 "
-            "ELSE CAST(queue_position AS DECIMAL(20,0)) "
-            "END AS queue_position_num"
+        _no_queue = "queue_position IS NULL OR queue_position = '' OR queue_position = 0"
+
+        # Block flag: rows WITHOUT appointment_date come first (0), rows with it come last (1).
+        has_date = "CASE WHEN appointment_date IS NULL THEN 0 ELSE 1 END AS has_date"
+
+        # queue_position (numeric) orders ONLY the "no appointment_date" block.
+        # NULL/empty/0 queue_position is mapped to -1 so it lands last under DESC.
+        # It is NULL for the dated block, so it never breaks the appointment_date order.
+        queue_sort = (
+            "CASE WHEN appointment_date IS NULL THEN "
+            f"(CASE WHEN {_no_queue} THEN -1 ELSE CAST(queue_position AS DECIMAL(20,0)) END) "
+            "ELSE NULL END AS queue_sort"
         )
 
         projects = frappe.get_all(
@@ -522,12 +532,13 @@ def get_projects_ordered_by_queue_position_and_appointment_date():
                 "appointment_date",
                 "queue_position",
                 "lane",
-                queue_cast,
+                has_date,
+                queue_sort,
             ],
             filters={
                 "status": ["in", ["In queue", "In parking"]],
             },
-            order_by="queue_position_num ASC, COALESCE(appointment_date, '9999-12-31') ASC",
+            order_by="has_date ASC, queue_sort DESC, appointment_date ASC",
         )
 
         frappe.cache().set_value(_QUEUE_CACHE_KEY, projects, expires_in_sec=_QUEUE_CACHE_TTL)
