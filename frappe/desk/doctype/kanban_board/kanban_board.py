@@ -531,37 +531,46 @@ def get_projects_ordered_by_queue_position_and_appointment_date():
         return cached
 
     try:
-        _no_queue = "queue_position IS NULL OR queue_position = '' OR queue_position = 0"
+        # Build the two-block ordering with the Query Builder so the conditional
+        # sort logic (CASE / CAST) never passes through DatabaseQuery's string field
+        # sanitizer, which blacklists "case"/parentheses and rejected the raw SQL
+        # strings this function used before (Error: "Use of sub-query or function is
+        # restricted").
+        from frappe.query_builder import Case
+        from frappe.query_builder.functions import Cast
 
-        # Block flag: rows WITHOUT appointment_date come first (0), rows with it come last (1).
-        has_date = "CASE WHEN appointment_date IS NULL THEN 0 ELSE 1 END AS has_date"
+        project = frappe.qb.DocType("Project")
+
+        # Rows WITHOUT appointment_date come first (0), rows with it come last (1).
+        has_date = Case().when(project.appointment_date.isnull(), 0).else_(1)
 
         # queue_position (numeric) orders ONLY the "no appointment_date" block.
         # NULL/empty/0 queue_position is mapped to 999999 so it lands last under ASC.
-        # It is NULL for the dated block, so it never breaks the appointment_date order.
-        queue_sort = (
-            "CASE WHEN appointment_date IS NULL THEN "
-            f"(CASE WHEN {_no_queue} THEN 999999 ELSE CAST(queue_position AS DECIMAL(20,0)) END) "
-            "ELSE NULL END AS queue_sort"
+        # The whole key is NULL for the dated block, so it never breaks the
+        # appointment_date order there.
+        no_queue = (
+            project.queue_position.isnull()
+            | (project.queue_position == "")
+            | (project.queue_position == 0)
         )
+        queue_num = Case().when(no_queue, 999999).else_(Cast(project.queue_position, "DECIMAL(20,0)"))
+        queue_sort = Case().when(project.appointment_date.isnull(), queue_num).else_(None)
 
-        projects = frappe.get_all(
-            "Project",
-            fields=[
-                "name",
-                "status",
-                "plate",
-                "appointment_date",
-                "queue_position",
-                "lane",
-                has_date,
-                queue_sort,
-            ],
-            filters={
-                "status": ["in", ["In queue", "In parking"]],
-            },
-            order_by="has_date ASC, queue_sort ASC, appointment_date ASC",
-        )
+        projects = (
+            frappe.qb.from_(project)
+            .select(
+                project.name,
+                project.status,
+                project.plate,
+                project.appointment_date,
+                project.queue_position,
+                project.lane,
+            )
+            .where(project.status.isin(["In queue", "In parking"]))
+            .orderby(has_date)
+            .orderby(queue_sort)
+            .orderby(project.appointment_date)
+        ).run(as_dict=True)
 
         frappe.cache().set_value(_QUEUE_CACHE_KEY, projects, expires_in_sec=_QUEUE_CACHE_TTL)
         return projects
