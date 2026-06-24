@@ -112,14 +112,22 @@ def get_count() -> int:
 
 
 def execute(doctype, *args, **kwargs):
-    if doctype == "Project":
-        fields = kwargs.get("fields") or []
+    fields = kwargs.get("fields") or []
 
+    # get_count / agregados / subconsultas (frappe.desk.reportview.get_count) pasan un
+    # count(...) como field o run=0. Inyectar columnas de orden ahí produce un agregado
+    # inválido (y rompe field.split() en prepare_args), así que solo personalizamos los
+    # fetch de datos reales de Project.
+    is_count_or_subquery = kwargs.get("run") == 0 or any(
+        "count(" in str(f).lower() or "total_count" in str(f).lower() for f in fields
+    )
+
+    if doctype == "Project" and not is_count_or_subquery:
         # Remplazar referencias directas al campo original, si vinieran
         if "`tabProject`.`queue_position`" in fields:
             fields.remove("`tabProject`.`queue_position`")
 
-        # Añadir el cast a DECIMAL con alias estable (si no está ya)
+        # Cast a DECIMAL con alias estable (si no está ya). Tiene CAST(...) -> contiene '('.
         cast_expr = """
             CASE
                 WHEN queue_position IS NULL OR queue_position = '' OR queue_position = 0 THEN 999999
@@ -132,22 +140,42 @@ def execute(doctype, *args, **kwargs):
         if not has_alias:
             fields.append(cast_expr)
 
-        kwargs["fields"] = fields
-
-        # Forzar el orden deseado SIEMPRE para Project, en DOS bloques independientes:
+        # Orden en DOS bloques independientes:
         #   1) sin appointment_date  -> ordenados por queue_position ASC (sin posición, al final)
         #   2) con appointment_date  -> ordenados por appointment_date ASC
-        # El segundo término neutraliza queue_position en el bloque con fecha (constante 0),
-        # para que una card con fecha que además tenga queue_position no se cuele en la cola.
-        queue_order = (
+        #
+        # TRES restricciones de Frappe condicionan cómo se escribe esto:
+        #  - validate_order_by_and_group_by rechaza order_by con caracteres fuera de
+        #    [a-z0-9-_ ,`'".()] (p. ej. '=' o un CASE) -> la lógica va en los FIELDS como
+        #    alias y el order_by SOLO referencia esos alias.
+        #  - prepare_args pasa un field "tal cual" solo si contiene '('; si no, intenta
+        #    `col AS alias` con field.split() (3 tokens) y revienta -> cada field DEBE tener
+        #    un '(' (de un CAST, no un paréntesis suelto).
+        #  - sanitize_fields rechaza un field cuyo token tras el PRIMER '(' sea una palabra
+        #    blacklisteada (select/create/.../case/show). Por eso NO se envuelve el CASE en
+        #    '(' (haría que el token sea 'case'): el primer '(' viene del CAST y el token
+        #    siguiente es un nombre de columna limpio (como el queue_position_num original).
+        queue_case = (
             "CASE WHEN queue_position IS NULL OR queue_position = '' OR queue_position = 0 "
             "THEN 999999 ELSE CAST(queue_position AS DECIMAL(20,0)) END"
         )
-        kwargs["order_by"] = (
-            "(CASE WHEN appointment_date IS NULL THEN 0 ELSE 1 END) ASC, "
-            f"(CASE WHEN appointment_date IS NULL THEN {queue_order} ELSE 0 END) ASC, "
-            "appointment_date ASC"
-        )
+        computed_fields = {
+            # 0 = sin fecha (primer bloque), 1 = con fecha (segundo bloque). El CAST aporta
+            # el '(' que prepare_args necesita y 'cast' no está blacklisteado.
+            "has_date": "CAST((appointment_date IS NOT NULL) AS UNSIGNED) AS has_date",
+            # queue_position solo ordena el bloque sin fecha; en el bloque con fecha es
+            # constante (0) para no romper el orden por appointment_date. El primer '(' es
+            # el del CAST interno -> token siguiente 'queue_position' (limpio).
+            "queue_block": f"CASE WHEN appointment_date IS NULL THEN {queue_case} ELSE 0 END AS queue_block",
+        }
+        for alias, expr in computed_fields.items():
+            if not any(f" AS {alias}" in f or f.strip() == alias for f in fields):
+                fields.append(expr)
+
+        kwargs["fields"] = fields
+
+        # order_by referencia SOLO alias -> pasa la validación de Frappe.
+        kwargs["order_by"] = "has_date ASC, queue_block ASC, appointment_date ASC"
 
     # Permisos
     kwargs["ignore_permissions"] = kwargs.get("ip", False) == "1"
