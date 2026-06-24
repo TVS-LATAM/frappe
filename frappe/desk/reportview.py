@@ -134,8 +134,20 @@ def execute(doctype, *args, **kwargs):
 
         kwargs["fields"] = fields
 
-        # Forzar el orden deseado SIEMPRE para Project
-        kwargs["order_by"] = "queue_position_num ASC, appointment_date ASC"
+        # Forzar el orden deseado SIEMPRE para Project, en DOS bloques independientes:
+        #   1) sin appointment_date  -> ordenados por queue_position ASC (sin posición, al final)
+        #   2) con appointment_date  -> ordenados por appointment_date ASC
+        # El segundo término neutraliza queue_position en el bloque con fecha (constante 0),
+        # para que una card con fecha que además tenga queue_position no se cuele en la cola.
+        queue_order = (
+            "CASE WHEN queue_position IS NULL OR queue_position = '' OR queue_position = 0 "
+            "THEN 999999 ELSE CAST(queue_position AS DECIMAL(20,0)) END"
+        )
+        kwargs["order_by"] = (
+            "(CASE WHEN appointment_date IS NULL THEN 0 ELSE 1 END) ASC, "
+            f"(CASE WHEN appointment_date IS NULL THEN {queue_order} ELSE 0 END) ASC, "
+            "appointment_date ASC"
+        )
 
     # Permisos
     kwargs["ignore_permissions"] = kwargs.get("ip", False) == "1"

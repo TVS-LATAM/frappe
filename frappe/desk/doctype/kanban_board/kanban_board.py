@@ -354,6 +354,28 @@ def get_order_for_column(board, colname):
 
 
 @frappe.whitelist()
+def get_kanban_board(board_name):
+    """Fetch a Kanban Board for rendering.
+
+    For Project boards, rebuild each column's `order` on the fly from the current
+    queue_position / appointment_date instead of the order frozen at board creation
+    (before_insert) or last drag. This is in-memory only (no save), so every load
+    reflects live data without writing on read.
+    """
+    board = frappe.get_doc("Kanban Board", board_name)
+    board.check_permission("read")
+
+    if board.reference_doctype == "Project":
+        projects_ordered = get_projects_ordered_by_queue_position_and_appointment_date()
+        for column in board.columns:
+            column.order = frappe.as_json(
+                [p["name"] for p in projects_ordered if p.get("status") == column.column_name]
+            )
+
+    return board.as_dict()
+
+
+@frappe.whitelist()
 def update_column_order(board_name, order):
     """Set the order of columns in Kanban Board"""
     board = frappe.get_doc("Kanban Board", board_name)
@@ -501,7 +523,7 @@ _QUEUE_CACHE_TTL = 5  # seconds
 
 def get_projects_ordered_by_queue_position_and_appointment_date():
     """Get projects in two independent blocks, split by appointment_date presence:
-    first the ones WITHOUT appointment_date (ordered by queue_position DESC; rows without
+    first the ones WITHOUT appointment_date (ordered by queue_position ASC; rows without
     queue_position last), then the ones WITH appointment_date (ordered by appointment_date ASC).
     Each block uses its own sort key; one never breaks ties for the other."""
     cached = frappe.cache().get_value(_QUEUE_CACHE_KEY)
@@ -515,11 +537,11 @@ def get_projects_ordered_by_queue_position_and_appointment_date():
         has_date = "CASE WHEN appointment_date IS NULL THEN 0 ELSE 1 END AS has_date"
 
         # queue_position (numeric) orders ONLY the "no appointment_date" block.
-        # NULL/empty/0 queue_position is mapped to -1 so it lands last under DESC.
+        # NULL/empty/0 queue_position is mapped to 999999 so it lands last under ASC.
         # It is NULL for the dated block, so it never breaks the appointment_date order.
         queue_sort = (
             "CASE WHEN appointment_date IS NULL THEN "
-            f"(CASE WHEN {_no_queue} THEN -1 ELSE CAST(queue_position AS DECIMAL(20,0)) END) "
+            f"(CASE WHEN {_no_queue} THEN 999999 ELSE CAST(queue_position AS DECIMAL(20,0)) END) "
             "ELSE NULL END AS queue_sort"
         )
 
@@ -538,7 +560,7 @@ def get_projects_ordered_by_queue_position_and_appointment_date():
             filters={
                 "status": ["in", ["In queue", "In parking"]],
             },
-            order_by="has_date ASC, queue_sort DESC, appointment_date ASC",
+            order_by="has_date ASC, queue_sort ASC, appointment_date ASC",
         )
 
         frappe.cache().set_value(_QUEUE_CACHE_KEY, projects, expires_in_sec=_QUEUE_CACHE_TTL)
