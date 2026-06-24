@@ -144,23 +144,29 @@ def execute(doctype, *args, **kwargs):
         #   1) sin appointment_date  -> ordenados por queue_position ASC (sin posición, al final)
         #   2) con appointment_date  -> ordenados por appointment_date ASC
         #
-        # Dos restricciones de Frappe condicionan cómo se escribe esto:
+        # TRES restricciones de Frappe condicionan cómo se escribe esto:
         #  - validate_order_by_and_group_by rechaza order_by con caracteres fuera de
         #    [a-z0-9-_ ,`'".()] (p. ej. '=' o un CASE) -> la lógica va en los FIELDS como
         #    alias y el order_by SOLO referencia esos alias.
         #  - prepare_args pasa un field "tal cual" solo si contiene '('; si no, intenta
-        #    `col AS alias` con field.split() (3 tokens) y revienta. Por eso cada CASE va
-        #    ENVUELTO en paréntesis.
+        #    `col AS alias` con field.split() (3 tokens) y revienta -> cada field DEBE tener
+        #    un '(' (de un CAST, no un paréntesis suelto).
+        #  - sanitize_fields rechaza un field cuyo token tras el PRIMER '(' sea una palabra
+        #    blacklisteada (select/create/.../case/show). Por eso NO se envuelve el CASE en
+        #    '(' (haría que el token sea 'case'): el primer '(' viene del CAST y el token
+        #    siguiente es un nombre de columna limpio (como el queue_position_num original).
         queue_case = (
             "CASE WHEN queue_position IS NULL OR queue_position = '' OR queue_position = 0 "
             "THEN 999999 ELSE CAST(queue_position AS DECIMAL(20,0)) END"
         )
         computed_fields = {
-            # 0 = sin fecha (primer bloque), 1 = con fecha (segundo bloque)
-            "has_date": "(CASE WHEN appointment_date IS NULL THEN 0 ELSE 1 END) AS has_date",
+            # 0 = sin fecha (primer bloque), 1 = con fecha (segundo bloque). El CAST aporta
+            # el '(' que prepare_args necesita y 'cast' no está blacklisteado.
+            "has_date": "CAST((appointment_date IS NOT NULL) AS UNSIGNED) AS has_date",
             # queue_position solo ordena el bloque sin fecha; en el bloque con fecha es
-            # constante (0) para no romper el orden por appointment_date.
-            "queue_block": f"(CASE WHEN appointment_date IS NULL THEN {queue_case} ELSE 0 END) AS queue_block",
+            # constante (0) para no romper el orden por appointment_date. El primer '(' es
+            # el del CAST interno -> token siguiente 'queue_position' (limpio).
+            "queue_block": f"CASE WHEN appointment_date IS NULL THEN {queue_case} ELSE 0 END AS queue_block",
         }
         for alias, expr in computed_fields.items():
             if not any(f" AS {alias}" in f or f.strip() == alias for f in fields):
