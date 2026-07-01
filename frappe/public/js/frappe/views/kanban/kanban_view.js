@@ -332,20 +332,27 @@ frappe.views.KanbanView = class KanbanView extends frappe.views.ListView {
 
 	render() {
 		const board_name = this.board_name;
-		if (!this.kanban) {
-			this.kanban = new frappe.views.KanbanBoard({
-				doctype: this.doctype,
-				board: this.board,
-				board_name: board_name,
-				cards: this.data,
-				card_meta: this.card_meta,
-				wrapper: this.$result,
-				cur_list: this,
-				user_settings: this.view_user_settings,
-			});
-		} else if (board_name === this.kanban.board_name) {
-			this.kanban.update(this.data);
-		}
+		// `frappe.views.KanbanBoard` is defined by kanban_board.bundle.js, which loads
+		// in parallel with the board data fetch. If the data fetch wins the race the
+		// bundle may not be ready yet, so gate rendering on `load_lib` to guarantee the
+		// constructor exists before we call it (fixes intermittent
+		// "frappe.views.KanbanBoard is not a constructor").
+		this.load_lib.then(() => {
+			if (!this.kanban) {
+				this.kanban = new frappe.views.KanbanBoard({
+					doctype: this.doctype,
+					board: this.board,
+					board_name: board_name,
+					cards: this.data,
+					card_meta: this.card_meta,
+					wrapper: this.$result,
+					cur_list: this,
+					user_settings: this.view_user_settings,
+				});
+			} else if (board_name === this.kanban.board_name) {
+				this.kanban.update(this.data);
+			}
+		});
 	}
 
 
