@@ -29,6 +29,105 @@ const IconColor = {
 	olive: "#d4d488",
 };
 
+// --- Instant hover tooltips ---------------------------------------------
+// The browser's native `title` tooltip has a ~1s delay and often fails to
+// appear at all — a mechanic hovering an icon could not find out what it meant
+// (this happened on the shop floor). That delay is browser-controlled and
+// cannot be shortened from HTML/CSS, so we render our own tooltip instead: it
+// appears instantly, is never clipped by the scrolling columns (it is
+// fixed-positioned on <body>), and shows the full description, not just a short
+// label. Icons carry their text in data-* attributes; ONE delegated listener
+// drives a single shared tooltip element for the whole page, so it keeps
+// working across card re-renders and on every board without re-binding.
+
+function escape_html(text) {
+	return String(text ?? "")
+		.replace(/&/g, "&amp;")
+		.replace(/"/g, "&quot;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;");
+}
+
+// Attributes every icon gets so the shared tooltip can describe it. `aria-label`
+// keeps it accessible to screen readers. We deliberately DO NOT emit a native
+// `title` — it would show a second, delayed tooltip on top of ours.
+function tip_attrs(title, description) {
+	const label = description ? `${title} — ${description}` : title;
+	return `data-kanban-tip="1" data-kanban-tip-title="${escape_html(title)}" ` +
+		`data-kanban-tip-desc="${escape_html(description || "")}" aria-label="${escape_html(label)}"`;
+}
+
+let _tooltip_el = null;
+let _tooltips_installed = false;
+
+function get_tooltip_el() {
+	if (_tooltip_el) return _tooltip_el;
+	_tooltip_el = document.createElement("div");
+	_tooltip_el.className = "kanban-icon-tooltip";
+	// Inline styles so this needs no separate CSS build. High z-index to clear
+	// dialogs/overlays; pointer-events none so it never steals the hover.
+	Object.assign(_tooltip_el.style, {
+		position: "fixed",
+		zIndex: "2000",
+		maxWidth: "280px",
+		padding: "7px 10px",
+		borderRadius: "6px",
+		background: "#1f272e",
+		color: "#fff",
+		fontSize: "12.5px",
+		lineHeight: "1.4",
+		boxShadow: "0 4px 14px rgba(0,0,0,0.3)",
+		pointerEvents: "none",
+		opacity: "0",
+		transition: "opacity 80ms ease",
+		display: "none",
+	});
+	document.body.appendChild(_tooltip_el);
+	return _tooltip_el;
+}
+
+function show_icon_tooltip(target) {
+	const title = target.getAttribute("data-kanban-tip-title") || "";
+	const desc = target.getAttribute("data-kanban-tip-desc") || "";
+	const el = get_tooltip_el();
+	el.innerHTML = `<div style="font-weight:600;">${escape_html(title)}</div>` +
+		(desc ? `<div style="opacity:0.85;margin-top:2px;">${escape_html(desc)}</div>` : "");
+	el.style.display = "block";
+	el.style.opacity = "0";
+	// Center above the icon; flip below if there is no room, clamp to viewport.
+	const rect = target.getBoundingClientRect();
+	const tip = el.getBoundingClientRect();
+	let left = rect.left + rect.width / 2 - tip.width / 2;
+	let top = rect.top - tip.height - 8;
+	if (top < 4) top = rect.bottom + 8;
+	left = Math.max(4, Math.min(left, window.innerWidth - tip.width - 4));
+	el.style.left = `${left}px`;
+	el.style.top = `${top}px`;
+	el.style.opacity = "1";
+}
+
+function hide_icon_tooltip() {
+	if (!_tooltip_el) return;
+	_tooltip_el.style.opacity = "0";
+	_tooltip_el.style.display = "none";
+}
+
+// Install once, globally. Delegated on the document so it survives card
+// re-renders and covers every board.
+export function setup_icon_tooltips() {
+	if (_tooltips_installed) return;
+	_tooltips_installed = true;
+	document.addEventListener("mouseover", (e) => {
+		const target = e.target.closest?.("[data-kanban-tip]");
+		if (target) show_icon_tooltip(target);
+	});
+	document.addEventListener("mouseout", (e) => {
+		if (e.target.closest?.("[data-kanban-tip]")) hide_icon_tooltip();
+	});
+	// Hide while the columns scroll so it never lingers in the wrong spot.
+	document.addEventListener("scroll", hide_icon_tooltip, true);
+}
+
 // --- Quotation ----------------------------------------------------------
 // The quotation icon is derived ONLY from the real linked Quotation
 // (`Quotation.project_name` -> `Project.name`). The manual `Project.payment_status`
@@ -176,7 +275,7 @@ const QUOTATION_ICONS = {
 
 export function render_quotation_icon(status) {
 	const config = QUOTATION_ICONS[status] || QUOTATION_ICONS[NO_QUOTATION];
-	return `<i class="fa ${config.icon} ${config.class ?? ''}" style="color:${config.color};" title="${config.title}"></i>`;
+	return `<i class="fa ${config.icon} ${config.class ?? ''}" style="color:${config.color};" ${tip_attrs(config.title, config.description)}></i>`;
 }
 
 // --- Parts --------------------------------------------------------------
@@ -207,7 +306,8 @@ const PARTS_ICONS = {
 
 export function render_parts_icon(status) {
 	const state = PARTS_ICONS[status] ? status : PARTS_DEFAULT_STATUS;
-	return `<span title="Parts: ${status || PARTS_DEFAULT_STATUS}">${PARTS_ICONS[state].svg}</span>`;
+	const title = `Parts: ${status || PARTS_DEFAULT_STATUS}`;
+	return `<span ${tip_attrs(title, PARTS_ICONS[state].description)}>${PARTS_ICONS[state].svg}</span>`;
 }
 
 // --- Software -----------------------------------------------------------
@@ -237,7 +337,8 @@ const SOFTWARE_ICONS = {
 
 export function render_software_icon(status) {
 	const state = SOFTWARE_ICONS[status] ? status : SOFTWARE_DEFAULT_STATUS;
-	return `<span title="Software: ${status || 'No status'}">${SOFTWARE_ICONS[state].svg}</span>`;
+	const title = `Software: ${status || "No status"}`;
+	return `<span ${tip_attrs(title, SOFTWARE_ICONS[state].description)}>${SOFTWARE_ICONS[state].svg}</span>`;
 }
 
 // --- Loan car -----------------------------------------------------------
@@ -283,7 +384,8 @@ const LOAN_CAR_ICONS = {
 
 export function render_loan_car_icon(status) {
 	const state = LOAN_CAR_ICONS[status] ? status : LOAN_CAR_DEFAULT_STATUS;
-	return `<span title="Loan Car: ${status || LOAN_CAR_DEFAULT_STATUS}">${LOAN_CAR_ICONS[state].svg}</span>`;
+	const title = `Loan Car: ${status || LOAN_CAR_DEFAULT_STATUS}`;
+	return `<span ${tip_attrs(title, LOAN_CAR_ICONS[state].description)}>${LOAN_CAR_ICONS[state].svg}</span>`;
 }
 
 // --- Pickup -------------------------------------------------------------
@@ -340,7 +442,7 @@ const PICKUP_ICONS = {
 
 export function render_pickup_icon(status) {
 	const config = PICKUP_ICONS[status] || PICKUP_ICONS[NO_PICKUP];
-	return `<i class="fa fa-taxi  ${config.class ?? ''}" style="color:${config.color};" title="${config.title}"></i>`;
+	return `<i class="fa fa-taxi  ${config.class ?? ''}" style="color:${config.color};" ${tip_attrs(config.title, config.description)}></i>`;
 }
 
 // --- Lane ---------------------------------------------------------------
@@ -369,7 +471,7 @@ const LANE_ICONS = {
 
 export function render_lane_icon(lane) {
 	const config = LANE_ICONS[lane] || LANE_ICONS[LANE_DEFAULT_STATUS];
-	return `<i class="fa ${config.icon}" style="color: ${config.color}; font-size: ${config.font_size}; margin-left: 4px; vertical-align: middle;" title="${config.title}"></i>`;
+	return `<i class="fa ${config.icon}" style="color: ${config.color}; font-size: ${config.font_size}; margin-left: 4px; vertical-align: middle;" ${tip_attrs(config.title, config.description)}></i>`;
 }
 
 // --- Whatsapp -----------------------------------------------------------
@@ -379,7 +481,7 @@ const WHATSAPP_ICON = {
 };
 
 export function render_whatsapp_icon() {
-	return `<img src="/assets/frappe/icons/jobcard/square-whatsapp.svg" style="height:1.2rem;margin-top:2px;" title="${WHATSAPP_ICON.title}" />`;
+	return `<img src="/assets/frappe/icons/jobcard/square-whatsapp.svg" style="height:1.2rem;margin-top:2px;" ${tip_attrs(WHATSAPP_ICON.title, WHATSAPP_ICON.description)} />`;
 }
 
 // --- Icon legend --------------------------------------------------------

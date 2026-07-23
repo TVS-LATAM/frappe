@@ -14,6 +14,7 @@ import {
 	render_lane_icon,
 	render_whatsapp_icon,
 	showIconLegendDialog,
+	setup_icon_tooltips,
 } from "./kanban_icon_theme";
 frappe.provide("frappe.views");
 
@@ -775,6 +776,7 @@ const columnsByMechanic = {
 			setup_sortable();
 			setup_zoom_component()
 			setup_icon_legend_button()
+			setup_icon_tooltips()
 		}
 
 		function setup_icon_legend_button() {
