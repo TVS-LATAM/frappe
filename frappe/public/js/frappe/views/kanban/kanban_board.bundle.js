@@ -1,6 +1,20 @@
 // TODO: Refactor for better UX
 
 import { createStore } from "vuex";
+// Icon theme lives in a sibling module so all card-icon colours/markup and the
+// legend have a single home. Edit colours there, not here.
+import {
+	NO_QUOTATION,
+	QUOTATION_STATUS_PRECEDENCE,
+	render_quotation_icon,
+	render_parts_icon,
+	render_software_icon,
+	render_loan_car_icon,
+	render_pickup_icon,
+	render_lane_icon,
+	render_whatsapp_icon,
+	showIconLegendDialog,
+} from "./kanban_icon_theme";
 frappe.provide("frappe.views");
 
 const ProjectStatusOptions = {
@@ -50,7 +64,10 @@ const columnsByMechanic = {
 (function () {
 	let kanban_size = KanbanSize.large
 	let same_status_2days = "2 days w/o update"
-	let quotations_draft = []
+	// Real Quotation rows for the projects currently on the board, keyed by
+	// Quotation.project_name (which links to Project.name). Filled by one batched
+	// query per board render — never one query per card.
+	let quotations_by_project = {}
 	let unread_conversations = []
 	var method_prefix = "frappe.desk.doctype.kanban_board.kanban_board.";
 
@@ -102,6 +119,7 @@ const columnsByMechanic = {
 					let phone_numbers = opts.cards.map(card => card.custom_customers_phone_number)
 					phone_numbers = new Set(phone_numbers)
 					const conversations = await last_message_from_customer(phone_numbers)
+					quotations_by_project = await load_quotations_for_cards(opts.doctype, opts.cards)
 
 					for (const card of opts.cards) {
 						const customer_responded = conversations.includes(card.custom_customers_phone_number)
@@ -126,6 +144,13 @@ const columnsByMechanic = {
 					let phone_numbers = cards.map(card => card.custom_customers_phone_number)
 					phone_numbers = new Set(phone_numbers)
 					const conversations = await last_message_from_customer(phone_numbers)
+					// `cards` can be a subset of the board, so merge instead of replacing:
+					// cards that are not part of this update must keep their quotations.
+					quotations_by_project = Object.assign(
+						{},
+						quotations_by_project,
+						await load_quotations_for_cards(state.doctype, cards)
+					)
 
 					for (const card of cards) {
 						const customer_responded = conversations.includes(card.custom_customers_phone_number)
@@ -734,6 +759,30 @@ const columnsByMechanic = {
 			bind_events();
 			setup_sortable();
 			setup_zoom_component()
+			setup_icon_legend_button()
+		}
+
+		function setup_icon_legend_button() {
+			// The legend documents the Project card icons, so it is meaningless elsewhere.
+			if (opts.doctype !== "Project") return;
+			// The page-head is rendered by the list view, so give it a beat to exist —
+			// same approach as insertFreezeQueuePosition() in kanban_view.js. Scope the
+			// lookup to this board's page wrapper: frappe keeps the pages of other
+			// boards cached (hidden) in the DOM, and a document-wide lookup would hit
+			// a stale one.
+			setTimeout(() => {
+				const root = self.cur_list.page?.wrapper?.[0] || document;
+				const container = root.querySelector("div.page-head.flex > div > div > div.flex.col.page-actions.justify-content-end");
+				if (!container || container.querySelector("#kanban-icon-legend-btn")) return;
+
+				const button = document.createElement("button");
+				button.setAttribute("id", "kanban-icon-legend-btn");
+				button.setAttribute("type", "button");
+				button.classList.add("btn", "btn-default", "btn-sm");
+				button.innerText = "Icon Legend";
+				button.addEventListener("click", showIconLegendDialog);
+				container.prepend(button);
+			}, 1500);
 		}
 
 		async function make_columns() {
@@ -1426,14 +1475,14 @@ const columnsByMechanic = {
 
 			if (card.doctype === 'Project') {
 				if (card.conversation) {
-					html += '<img src="/assets/frappe/icons/jobcard/square-whatsapp.svg" style="height:1.2rem;margin-top:2px;" title="Whatsapp Conversation" />'
+					html += render_whatsapp_icon()
 				}
 
-				html += getPartsIcons()
-				html += getSoftwareIcons()
-				html += getLoanCarIcons()
-				html += getPickupIcon()
-				html += getQuotationIcon()
+				html += render_parts_icon(card.doc.parts_status)
+				html += render_software_icon(card.doc.software_status)
+				html += render_loan_car_icon(card.doc.is_loan_car)
+				html += render_pickup_icon(card.doc.pickup)
+				html += render_quotation_icon(get_project_quotation_status(card.name))
 			}
 
 			if (card.color && frappe.ui.color.validate_hex(card.color)) {
@@ -1472,110 +1521,11 @@ const columnsByMechanic = {
 			});
 		}
 
-		/*
-		colors used:
-		#D14343  -- red
-		#33AD53  -- green
-		#D1D1D1  -- gray
-		*/
-
-		function getPartsIcons() {
-			let html = "";
-			let status = card.doc.parts_status || "Delivered";
-			let title = `Parts: ${status}`;
-			if (card.doc.parts_status === "New request") {
-				html = `<span title="${title}"><svg xmlns="http://www.w3.org/2000/svg" height="14" width="15.75" viewBox="0 0 576 512"><path class="fa-secondary" opacity=".4" fill="#d14343" d="M552 64H159.2l52.4 256h293.2a24 24 0 0 0 23.4-18.7l47.3-208a24 24 0 0 0 -18.1-28.7A23.7 23.7 0 0 0 552 64z"/><path class="fa-primary" fill="#d14343" d="M218.1 352h268.4a24 24 0 0 1 23.4 29.3l-5.5 24.3a56 56 0 1 1 -63.6 10.4H231.2a56 56 0 1 1 -67.1-8.6L93.9 64H24A24 24 0 0 1 0 40V24A24 24 0 0 1 24 0h102.5A24 24 0 0 1 150 19.2z"/></svg></span>`;
-			}
-			if (card.doc.parts_status === "Ready for pickup") {
-				html = `<span title="${title}"><svg xmlns="http://www.w3.org/2000/svg" height="14" width="15.75" viewBox="0 0 576 512"><path class="fa-secondary" opacity=".4" fill="#33ad53" d="M552 64H159.2l52.4 256h293.2a24 24 0 0 0 23.4-18.7l47.3-208a24 24 0 0 0 -18.1-28.7A23.7 23.7 0 0 0 552 64z"/><path class="fa-primary" fill="#33ad53" d="M218.1 352h268.4a24 24 0 0 1 23.4 29.3l-5.5 24.3a56 56 0 1 1 -63.6 10.4H231.2a56 56 0 1 1 -67.1-8.6L93.9 64H24A24 24 0 0 1 0 40V24A24 24 0 0 1 24 0h102.5A24 24 0 0 1 150 19.2z"/></svg></span>`;
-			}
-			if (card.doc.parts_status === "Delivered" || !card.doc.parts_status) {
-				html = `<span title="${title}"><svg xmlns="http://www.w3.org/2000/svg" height="14" width="15.75" viewBox="0 0 576 512"><path fill="#d1d1d1" d="M528.1 301.3l47.3-208C578.8 78.3 567.4 64 552 64H159.2l-9.2-44.8C147.8 8 137.9 0 126.5 0H24C10.7 0 0 10.7 0 24v16c0 13.3 10.7 24 24 24h69.9l70.2 343.4C147.3 417.1 136 435.2 136 456c0 30.9 25.1 56 56 56s56-25.1 56-56c0-15.7-6.4-29.8-16.8-40h209.6C430.4 426.2 424 440.3 424 456c0 30.9 25.1 56 56 56s56-25.1 56-56c0-22.2-12.9-41.3-31.6-50.4l5.5-24.3c3.4-15-8-29.3-23.4-29.3H218.1l-6.5-32h293.1c11.2 0 20.9-7.8 23.4-18.7z"/></svg></span>`;
-			}
-			return html
-		}
-
-		function getQuotationIcon() {
-			const QuotationStatus = {
-				Declined: 'Quotation Declined',
-				AwaitingApproval: 'Awaiting approval quotation',
-				Approved: 'Quotation approved',
-				AwaitingPayment: 'Invoice send awaiting payment',
-				PaymentReady: 'Payment ready.'
-			}
-			const status = card.doc.payment_status
-			const opts = {
-				[QuotationStatus.Declined]: { class: 'blink-red', icon: 'fa-times-circle' },
-				[QuotationStatus.AwaitingApproval]: { color: '#949418', icon: 'fa-file-o' },
-				[QuotationStatus.Approved]: { color: 'green', icon: 'fa fa-file' },
-				[QuotationStatus.AwaitingPayment]: { color: '#4287f5', icon: 'fa-file-text-o' },
-				[QuotationStatus.PaymentReady]: { color: 'green', icon: 'fa-money' }
-			}
-
-			if (status === "No") return ''
-
-			const config = opts[status] || { color: 'red', icon: 'fa-file' };
-			return `<i class="fa ${config.icon} ${config.class ?? ''}" style="color:${config.color}" title="${status}"></i>`;
-		}
-
 		function getLaneIcon() {
 			// Lane (fast/heavy) is a workshop-floor concept; only show it on the
 			// workshop kanban, not on other Project boards (Parts, Remote Diagnose, ...).
 			if (!frappe.views.is_workshop_kanban(cur_list.board_name)) return "";
-			if (card.doc.lane === "FAST") {
-				return '<i class="fa fa-tint" style="color: #8B4513; font-size: 1rem; margin-left: 4px; vertical-align: middle;" title="Fast Lane"></i>';
-			}
-			// Default or HEAVY
-			return '<i class="fa fa-wrench" style="color: #4b5563; font-size: 1.1rem; margin-left: 4px; vertical-align: middle;" title="Heavy Lane"></i>';
-		}
-
-		function getSoftwareIcons() {
-			let html = "";
-			let status = card.doc.software_status || "No status";
-			let title = `Software: ${status}`;
-			if (card.doc.software_status === "Software request") {
-				html = `<span title="${title}"><svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 512 512"><path class="fa-secondary" opacity="1" fill="#d14343" d="M24 190v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42v-48H30a6 6 0 0 0 -6 6zm0-96v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42V88H30a6 6 0 0 0 -6 6zm482 6h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm0 192h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm0-96h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm0 192h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm-482-6v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42v-48H30a6 6 0 0 0 -6 6zm0-96v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42v-48H30a6 6 0 0 0 -6 6z"/><path class="fa-primary" fill="#d14343" d="M144 512a48 48 0 0 1 -48-48V48a48 48 0 0 1 48-48h224a48 48 0 0 1 48 48v416a48 48 0 0 1 -48 48z"/></svg></span>`;
-			}
-			if (card.doc.software_status === "Software is ready for use") {
-				html = `<span title="${title}"><svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 512 512"><path class="fa-secondary" opacity="1" fill="#33ad53" d="M24 190v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42v-48H30a6 6 0 0 0 -6 6zm0-96v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42V88H30a6 6 0 0 0 -6 6zm482 6h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm0 192h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm0-96h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm0 192h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm-482-6v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42v-48H30a6 6 0 0 0 -6 6zm0-96v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42v-48H30a6 6 0 0 0 -6 6z"/><path class="fa-primary" fill="#33ad53" d="M144 512a48 48 0 0 1 -48-48V48a48 48 0 0 1 48-48h224a48 48 0 0 1 48 48v416a48 48 0 0 1 -48 48z"/></svg></span>`;
-			}
-			if (card.doc.software_status === "Software has been attached" || !card.doc.software_status) {
-				html = `<span title="${title}"><svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 512 512"><path class="fa-secondary" opacity="1" fill="#d1d1d1" d="M24 190v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42v-48H30a6 6 0 0 0 -6 6zm0-96v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42V88H30a6 6 0 0 0 -6 6zm482 6h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm0 192h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm0-96h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm0 192h-18v-6a6 6 0 0 0 -6-6h-42v48h42a6 6 0 0 0 6-6v-6h18a6 6 0 0 0 6-6v-12a6 6 0 0 0 -6-6zm-482-6v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42v-48H30a6 6 0 0 0 -6 6zm0-96v6H6a6 6 0 0 0 -6 6v12a6 6 0 0 0 6 6h18v6a6 6 0 0 0 6 6h42v-48H30a6 6 0 0 0 -6 6z"/><path class="fa-primary" fill="#d1d1d1" d="M144 512a48 48 0 0 1 -48-48V48a48 48 0 0 1 48-48h224a48 48 0 0 1 48 48v416a48 48 0 0 1 -48 48z"/></svg></span>`;
-			}
-			return html
-		}
-
-		function getLoanCarIcons() {
-			let html = "";
-			let status = card.doc.is_loan_car || "No";
-			let title = `Loan Car: ${status}`;
-			if (!card.doc.is_loan_car || card.doc.is_loan_car === "No" || card.doc.is_loan_car === "Car returned") {
-				html = `<span title="${title}"><svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 512 512"><path class="fa-secondary" opacity="0.8" fill="#d1d1d1" d="M303.1 348.9l.1 .1-24 27a24 24 0 0 1 -17.9 8H224v40a24 24 0 0 1 -24 24h-40v40a24 24 0 0 1 -24 24H24a24 24 0 0 1 -24-24v-78a24 24 0 0 1 7-17l161.8-161.8-.1-.4a176.2 176.2 0 0 0 134.3 118.1z"/><path class="fa-primary" fill="#d1d1d1" d="M336 0a176 176 0 1 0 176 176A176 176 0 0 0 336 0zm48 176a48 48 0 1 1 48-48 48 48 0 0 1 -48 48z"/></svg></span>`;
-			}
-			else if (card.doc.is_loan_car === "Yes") {
-				html = `<span title="${title}"><svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 512 512"><path class="fa-secondary" opacity=".4" fill="#d14343" d="M303.1 348.9l.1 .1-24 27a24 24 0 0 1 -17.9 8H224v40a24 24 0 0 1 -24 24h-40v40a24 24 0 0 1 -24 24H24a24 24 0 0 1 -24-24v-78a24 24 0 0 1 7-17l161.8-161.8-.1-.4a176.2 176.2 0 0 0 134.3 118.1z"/><path class="fa-primary" fill="#d14343" d="M336 0a176 176 0 1 0 176 176A176 176 0 0 0 336 0zm48 176a48 48 0 1 1 48-48 48 48 0 0 1 -48 48z"/></svg></span>`;
-			} else if (card.doc.is_loan_car === "Loaned car") {
-				html = `<span title="${title}"><svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 512 512"><path class="fa-secondary" opacity=".4" fill="#33ad53" d="M303.1 348.9l.1 .1-24 27a24 24 0 0 1 -17.9 8H224v40a24 24 0 0 1 -24 24h-40v40a24 24 0 0 1 -24 24H24a24 24 0 0 1 -24-24v-78a24 24 0 0 1 7-17l161.8-161.8-.1-.4a176.2 176.2 0 0 0 134.3 118.1z"/><path class="fa-primary" fill="#33ad53" d="M336 0a176 176 0 1 0 176 176A176 176 0 0 0 336 0zm48 176a48 48 0 1 1 48-48 48 48 0 0 1 -48 48z"/></svg></span>`;
-			}
-			return html
-		}
-
-		function getPickupIcon() {
-			const pickupStatus = {
-				dropoff: 'Dropoff service',
-				pickup: 'Pickup service',
-				dropoffArranged: 'Dropoff service arranged',
-				pickupArranged: 'Pickup service arranged',
-			}
-			const status = card.doc.pickup
-			const opts = {
-				[pickupStatus.dropoff]: { class: 'blink-red' },
-				[pickupStatus.dropoffArranged]: { color: 'green' },
-				[pickupStatus.pickup]: { class: 'blink-red' },
-				[pickupStatus.pickupArranged]: { color: 'green' }
-			}
-
-			return `<i class="fa fa-taxi  ${opts[status]?.class ?? ''}" style="color:${opts[status]?.color ?? '#d1d1d1'};" title="${status || 'Pickup Status: None'}"></i>`;
+			return render_lane_icon(card.doc.lane);
 		}
 
 		function bind_expand_button() {
@@ -1800,7 +1750,8 @@ const columnsByMechanic = {
 		const modifiedDate = new Date(card.status_modified);
 		const dayDifference = satuday_sunday_combined(modifiedDate, nowDate);
 		const in_parking = card.status === 'In parking' && Number(card.queue_position) <= 5 && satuday_sunday_combined(card.parking_date, nowDate) >= 2;
-		const quotation = card.status === 'Quoted' && quotations_draft.length && quotations_draft.find(quotation => quotation.parent == card.name);
+		// Quotation links to the project through `project_name`, not `parent`.
+		const quotation = card.status === 'Quoted' && get_project_quotation(card.name);
 		const hass_passed_one_day_quotation = quotation && has_passed_one_day(quotation.modified);
 
 		if (in_parking) {
@@ -1874,6 +1825,56 @@ const columnsByMechanic = {
 		_convCache.lastMessageKey = key;
 		_convCache.ts = Date.now();
 		return result;
+	}
+
+	// One query for the whole board: fetch every Quotation linked to the given
+	// projects and group them by project. Returns an object keyed by project name;
+	// every requested project gets an entry (an empty array when it has no
+	// quotation) so callers can merge the result without keeping stale rows.
+	async function fetch_quotations_by_project(project_names) {
+		const names = [...project_names].filter(Boolean);
+		const quotations_by_name = {};
+		names.forEach(name => (quotations_by_name[name] = []));
+		if (!names.length) return quotations_by_name;
+
+		const quotations = await frappe.db.get_list("Quotation", {
+			filters: [["project_name", "in", names]],
+			fields: ["name", "project_name", "status", "modified"],
+			limit_page_length: 0,
+		});
+		quotations.forEach(quotation => {
+			if (!quotations_by_name[quotation.project_name]) {
+				quotations_by_name[quotation.project_name] = [];
+			}
+			quotations_by_name[quotation.project_name].push(quotation);
+		});
+		return quotations_by_name;
+	}
+
+	// Quotations are only shown on Project boards, so don't query for other doctypes.
+	async function load_quotations_for_cards(doctype, cards) {
+		if (doctype !== "Project") return {};
+		return fetch_quotations_by_project(new Set(cards.map(card => card.name)));
+	}
+
+	// A project can have several quotations. Pick the most advanced one so an old
+	// "Declined" quotation cannot paint a card red once a newer one is "Approved".
+	function get_project_quotation(project_name) {
+		const quotations = quotations_by_project[project_name];
+		if (!quotations || !quotations.length) return null;
+		return quotations
+			.slice()
+			.sort((a, b) => quotation_rank(a.status) - quotation_rank(b.status))[0];
+	}
+
+	function get_project_quotation_status(project_name) {
+		return get_project_quotation(project_name)?.status || NO_QUOTATION;
+	}
+
+	function quotation_rank(status) {
+		const rank = QUOTATION_STATUS_PRECEDENCE.indexOf(status);
+		// Unknown statuses rank last, so a known status always wins.
+		return rank === -1 ? QUOTATION_STATUS_PRECEDENCE.length : rank;
 	}
 
 	async function getUnreadConversations() {
