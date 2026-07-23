@@ -118,8 +118,13 @@ const columnsByMechanic = {
 					var cards = []
 					let phone_numbers = opts.cards.map(card => card.custom_customers_phone_number)
 					phone_numbers = new Set(phone_numbers)
-					const conversations = await last_message_from_customer(phone_numbers)
-					quotations_by_project = await load_quotations_for_cards(opts.doctype, opts.cards)
+					// Load conversations and quotations concurrently so the board
+					// waits for the slower of the two, not the sum of both.
+					const [conversations, loaded_quotations] = await Promise.all([
+						last_message_from_customer(phone_numbers),
+						load_quotations_for_cards(opts.doctype, opts.cards),
+					])
+					quotations_by_project = loaded_quotations
 
 					for (const card of opts.cards) {
 						const customer_responded = conversations.includes(card.custom_customers_phone_number)
@@ -143,13 +148,17 @@ const columnsByMechanic = {
 					var prepared_cards = []
 					let phone_numbers = cards.map(card => card.custom_customers_phone_number)
 					phone_numbers = new Set(phone_numbers)
-					const conversations = await last_message_from_customer(phone_numbers)
+					// Load conversations and quotations concurrently (see init).
+					const [conversations, loaded_quotations] = await Promise.all([
+						last_message_from_customer(phone_numbers),
+						load_quotations_for_cards(state.doctype, cards),
+					])
 					// `cards` can be a subset of the board, so merge instead of replacing:
 					// cards that are not part of this update must keep their quotations.
 					quotations_by_project = Object.assign(
 						{},
 						quotations_by_project,
-						await load_quotations_for_cards(state.doctype, cards)
+						loaded_quotations
 					)
 
 					for (const card of cards) {
@@ -326,6 +335,12 @@ const columnsByMechanic = {
 						});
 				},
 				update_order: function (context) {
+					// The board wrapper is committed to state at the end of the
+					// "init" action. If init is still in flight (or failed), there
+					// is no DOM to read a card order from — bail out instead of
+					// throwing "Cannot read properties of undefined (reading 'find')".
+					if (!context.state.wrapper) return;
+
 					// cache original order
 					const _cards = context.state.cards.slice();
 					const _columns = context.state.columns.slice();
@@ -1837,11 +1852,28 @@ const columnsByMechanic = {
 		names.forEach(name => (quotations_by_name[name] = []));
 		if (!names.length) return quotations_by_name;
 
-		const quotations = await frappe.db.get_list("Quotation", {
-			filters: [["project_name", "in", names]],
-			fields: ["name", "project_name", "status", "modified"],
-			limit_page_length: 0,
-		});
+		// Query over POST (not GET): frappe.db.get_list sends the filter in the
+		// URL, and hundreds of project names blow past gunicorn's request-line
+		// limit (~4 KB) on large boards, which returns 400. frappe.client.get_list
+		// called through frappe.call carries the filter in the request body, so
+		// the board size no longer matters. This must never throw — a failed
+		// quotation lookup only means "no quotation icons", never a dead board.
+		let quotations = [];
+		try {
+			const r = await frappe.call({
+				method: "frappe.client.get_list",
+				args: {
+					doctype: "Quotation",
+					filters: [["project_name", "in", names]],
+					fields: ["name", "project_name", "status", "modified"],
+					limit_page_length: 0,
+				},
+			});
+			quotations = r?.message || [];
+		} catch (e) {
+			console.error("Kanban: failed to load quotations", e);
+			return quotations_by_name;
+		}
 		quotations.forEach(quotation => {
 			if (!quotations_by_name[quotation.project_name]) {
 				quotations_by_name[quotation.project_name] = [];
