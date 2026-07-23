@@ -509,7 +509,6 @@ const columnsByMechanic = {
 
 			store.dispatch('update_order')
 
-			console.log("kanban board initialized")
 			render_scroll_box();
 		}
 
@@ -1202,11 +1201,7 @@ const columnsByMechanic = {
 					// Quality check approved validation
 					if (validationPassed && args.to_colname === "Quality check approved") {
 						await validate_project_quotations_and_requirements(args)
-							.then(res => {
-								console.log(`Validation passed for moving to Quality check approved: ${args.name}`);
-							})
 							.catch(error => {
-								console.log(`Validation failed for Quality check approved: ${error || 'User cancelled'}`);
 								validationPassed = false;
 							});
 					}
@@ -1214,11 +1209,7 @@ const columnsByMechanic = {
 					// Completed validation
 					if (validationPassed && args.to_colname === "Completed") {
 						await validate_project_loan_car(args)
-							.then(res => {
-								console.log(`Validation passed for moving to Completed: ${args.name}`);
-							})
 							.catch(error => {
-								console.log(`Validation failed for Completed: ${error || 'User cancelled'}`);
 								validationPassed = false;
 							});
 					}
@@ -1226,11 +1217,7 @@ const columnsByMechanic = {
 					// Queue notification confirmation for done statuses
 					if (validationPassed && ["Completed", "Cancelled", "No response from customer"].includes(args.to_colname)) {
 						await validate_queue_notification(args)
-							.then(res => {
-								console.log(`Queue notification confirmed for: ${args.name}`);
-							})
 							.catch(error => {
-								console.log(`Queue notification cancelled: ${error || 'User cancelled'}`);
 								validationPassed = false;
 							});
 					}
@@ -1248,7 +1235,6 @@ const columnsByMechanic = {
 					if (validationPassed) {
 						store.dispatch("update_order_for_single_card", args);
 					} else {
-						console.log(`Card movement prevented due to failed validation: ${args.name}`);
 						store.state.cur_list.refresh();
 					}
 				},
@@ -2172,9 +2158,6 @@ const columnsByMechanic = {
 			method: "frappe.core.doctype.user.user.update_kanban_size",
 			args: {
 				value: zoomState,
-			},
-			callback: function (r) {
-				console.log("Kanban size updated in the backend");
 			},
 		});
 
