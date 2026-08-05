@@ -518,9 +518,17 @@ const columnsByMechanic = {
 				self.wrapper.css('position', 'relative');
 			}
 
+			// The helper starts collapsed so it never sits on top of the cards:
+			// only the small toggle stays on screen, the mini-map slides out on demand.
+			// Remember the choice on `self` so a board re-render does not close it again.
+			if (self._scroll_box_collapsed === undefined) {
+				self._scroll_box_collapsed = true;
+			}
+
 			let toggle_btn = self.wrapper.find('.kanban-scroll-toggle');
 			if (!toggle_btn.length) {
-				toggle_btn = $('<div class="kanban-scroll-toggle"><i class="fa fa-chevron-left"></i></div>');
+				toggle_btn = $('<div class="kanban-scroll-toggle" title="' +
+					__("Toggle scroll helper") + '"><i class="fa fa-arrows-h"></i></div>');
 				self.wrapper.append(toggle_btn);
 			}
 
@@ -529,6 +537,9 @@ const columnsByMechanic = {
 				scroll_box = $('<div class="kanban-scroll-box"></div>');
 				self.wrapper.append(scroll_box);
 			}
+
+			scroll_box.toggleClass('collapsed', self._scroll_box_collapsed);
+			toggle_btn.toggleClass('active', !self._scroll_box_collapsed);
 
 			// Clear previous content
 			scroll_box.empty();
@@ -562,11 +573,16 @@ const columnsByMechanic = {
 				const visibleWidth = wrapperEl.clientWidth;
 				const scrollBoxWidth = scroll_box.width(); // Should be 150px
 
-				if (totalWidth <= visibleWidth) {
+				// Nothing to scroll — keep the helper out of the way entirely.
+				const overflows = totalWidth > visibleWidth + 1;
+				toggle_btn.toggle(overflows);
+				if (!overflows) {
 					tracker.width(scrollBoxWidth);
 					tracker.css('left', 0);
+					scroll_box.addClass('collapsed');
 					return;
 				}
+				scroll_box.toggleClass('collapsed', self._scroll_box_collapsed);
 
 				// Calculate proportional width
 				let trackerWidth = (visibleWidth / totalWidth) * scrollBoxWidth;
@@ -689,10 +705,11 @@ const columnsByMechanic = {
 
 			toggle_btn.off('click').on('click', (e) => {
 				e.stopPropagation();
-				scroll_box.toggleClass('collapsed');
-				toggle_btn.toggleClass('collapsed');
-				const is_collapsed = scroll_box.hasClass('collapsed');
-				toggle_btn.find('i').toggleClass('fa-chevron-left', !is_collapsed).toggleClass('fa-chevron-right', is_collapsed);
+				self._scroll_box_collapsed = !self._scroll_box_collapsed;
+				scroll_box.toggleClass('collapsed', self._scroll_box_collapsed);
+				toggle_btn.toggleClass('active', !self._scroll_box_collapsed);
+				// The tracker is sized from the box width, so refresh it once it is visible.
+				if (!self._scroll_box_collapsed) updateTrackerDimensions();
 			});
 
 			const style_id = "kanban-scroll-box-style";
@@ -705,47 +722,60 @@ const columnsByMechanic = {
 					}
 					.kanban-scroll-box {
 						position: absolute;
-						bottom: -3%;
-						left: 40px;
+						bottom: 8px;
+						left: 34px;
 						width: 150px;
-						height: 50px;
-						background-color: white;
+						height: 24px;
+						background-color: var(--fg-color, white);
 						z-index: 999;
 						display: flex;
 						flex-direction: row;
 						justify-content: space-evenly;
+						align-items: center;
 						padding: 4px;
-						border: 0.5px solid black;
-						transition: transform 0.3s ease, opacity 0.3s ease;
+						border: 1px solid var(--border-color, #d1d8dd);
+						border-radius: var(--border-radius-md, 6px);
+						box-shadow: var(--shadow-base, 0 1px 4px rgba(0, 0, 0, 0.12));
+						transform-origin: left center;
+						transition: transform 0.2s ease, opacity 0.2s ease;
 					}
+					/* Collapsed keeps the box laid out (so the tracker can still be measured)
+					   but folds it into the toggle and takes it out of the pointer flow. */
 					.kanban-scroll-box.collapsed {
-						transform: translateX(-200px);
+						transform: scaleX(0.02);
 						opacity: 0;
 						pointer-events: none;
 					}
 					.kanban-scroll-toggle {
 						position: absolute;
-						bottom: -3%;
-						left: 0px;
-						width: 30px;
-						height: 50px;
-						background-color: #f0f0f0;
+						bottom: 8px;
+						left: 4px;
+						width: 24px;
+						height: 24px;
+						background-color: var(--fg-color, white);
+						color: var(--text-muted, #8d99a6);
+						font-size: 11px;
 						z-index: 1000;
 						display: flex;
 						align-items: center;
 						justify-content: center;
 						cursor: pointer;
-						border: 0.5px solid black;
-						border-radius: 4px 0 0 4px;
-						transition: left 0.3s ease;
+						border: 1px solid var(--border-color, #d1d8dd);
+						border-radius: var(--border-radius-md, 6px);
+						box-shadow: var(--shadow-base, 0 1px 4px rgba(0, 0, 0, 0.12));
+						opacity: 0.65;
+						transition: opacity 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 					}
-					.kanban-scroll-toggle:hover {
-						background-color: #e0e0e0;
+					.kanban-scroll-toggle:hover,
+					.kanban-scroll-toggle.active {
+						opacity: 1;
+						background-color: var(--control-bg, #f4f5f6);
+						color: var(--text-color, #1f272e);
 					}
 					.kanban-scroll-box-rect {
-						width: 4px;
+						width: 3px;
 						height: 100%;
-						background-color: #c7c7c7;
+						background-color: var(--gray-300, #c7c7c7);
 						border-radius: 2px;
 					}
 					.kanban-scroll-tracker {
@@ -753,7 +783,8 @@ const columnsByMechanic = {
 						top: 0;
 						height: 100%;
 						/* width set dynamically */
-						border: 2px solid blue;
+						border: 2px solid var(--primary, #2490ef);
+						border-radius: var(--border-radius-md, 6px);
 						background-color: transparent;
 						cursor: grab;
 						box-sizing: border-box;
