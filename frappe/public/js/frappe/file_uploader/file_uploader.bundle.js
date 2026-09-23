@@ -2,11 +2,6 @@ import { createApp } from "vue";
 import FileUploaderComponent from "./FileUploader.vue";
 import { watch } from "vue";
 
-const parstDoctype = "Handle Parts";
-let doctype_selected = "";
-let parent_doctype = "";
-
-
 class FileUploader {
 	constructor({
 		wrapper,
@@ -71,12 +66,6 @@ class FileUploader {
 		watch(
 			() => this.uploader.files,
 			(files) => {
-				if (doctype == parstDoctype) {
-
-					parent_doctype = doctype;
-				} else {
-					parent_doctype = "";
-				}
 				let all_private = files.every((file) => file.private);
 				if (this.dialog) {
 					this.dialog.set_secondary_action_label(
