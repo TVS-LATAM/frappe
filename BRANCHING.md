@@ -7,7 +7,7 @@
 
 ## How changes flow
 
-1. Create your branch from `tvs-version-15-development` (for example `fix/...` or `feat/...`) and open a pull request into `tvs-version-15-development`.
+1. Work on `tvs-version-15-development`: push directly, no pull request is required. A short-lived branch merged into `tvs-version-15-development` is fine when you want a review.
 2. To release, open a pull request from `tvs-version-15-development` into `tvs-version-15`.
 
 ## Rules on `tvs-version-15`
