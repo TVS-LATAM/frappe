@@ -1,0 +1,26 @@
+name: Guard production
+
+# Branch protection cannot restrict which branch a PR merges from.
+# "PR source must be the development branch" is a required check on tvs-version-15.
+
+on:
+  pull_request:
+    branches: [tvs-version-15]
+
+env:
+  ALLOWED_SOURCE: tvs-version-15-development
+
+jobs:
+  source-branch:
+    name: PR source must be the development branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check head branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "$HEAD_REF" != "$ALLOWED_SOURCE" ]; then
+            echo "::error::PRs into tvs-version-15 must come from '$ALLOWED_SOURCE' (got '$HEAD_REF')."
+            exit 1
+          fi
+          echo "Source branch OK: $HEAD_REF"
